@@ -1,0 +1,14 @@
+.env
+__pycache__
+*.pyc
+*.pyo
+.git
+node_modules
+*.json.secret
+lastminuteai-firebase-adminsdk*.json
+client_secret*.json
+.pytest_cache
+*.egg-info
+venv/
+.venv/
+test_all_apis.py

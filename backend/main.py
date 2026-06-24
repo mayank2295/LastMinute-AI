@@ -329,7 +329,28 @@ async def get_briefing(session_id: str):
 
 
 # ─── Serve frontend in production ─────────────────────────────────────────────
+# React Router requires the server to return index.html for all non-API routes.
+# We do explicit catch-all routes BEFORE the static mount so FastAPI routes win.
 
-_dist = os.path.join(os.path.dirname(__file__), "..", "frontend", "dist")
-if os.path.exists(_dist):
-    app.mount("/", StaticFiles(directory=_dist, html=True), name="static")
+from fastapi.responses import FileResponse
+
+_static_dir = os.path.join(os.path.dirname(__file__), "static")
+
+
+def _spa_index():
+    return FileResponse(os.path.join(_static_dir, "index.html"))
+
+
+if os.path.exists(_static_dir):
+    # SPA catch-all routes — must be registered before the static mount
+    @app.get("/login")
+    async def serve_login(): return _spa_index()
+
+    @app.get("/dashboard")
+    async def serve_dashboard(): return _spa_index()
+
+    @app.get("/dashboard/{rest_of_path:path}")
+    async def serve_dashboard_sub(rest_of_path: str): return _spa_index()
+
+    # Serve static assets (JS/CSS/images) — this must come last
+    app.mount("/", StaticFiles(directory=_static_dir, html=True), name="static")
