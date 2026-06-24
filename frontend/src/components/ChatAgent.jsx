@@ -85,7 +85,7 @@ export default function ChatAgent({ onTasksUpdated }) {
         </div>
         <div>
           <p className="text-xs font-semibold text-primary">AI Agent</p>
-          <p className="text-[10px] text-muted">Claude Haiku · Function Calling</p>
+          <p className="text-[10px] text-muted">Google Gemini · Function Calling</p>
         </div>
         <div className="ml-auto flex items-center gap-1.5 text-[10px] text-muted">
           <span className="w-1.5 h-1.5 rounded-full bg-accent" />

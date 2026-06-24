@@ -1,24 +1,28 @@
-﻿# LastMinute AI — Your Deadline Co-Pilot
+# LastMinute AI — Your Deadline Co-Pilot
 
-> AI-powered productivity companion that connects to Google Calendar,
-> detects upcoming deadlines, and proactively helps you complete tasks
-> before it's too late.
+> An autonomous, AI-powered productivity agent that connects to your Google
+> Calendar, finds what's on fire, and proactively builds and executes your plan
+> — before it's too late.
 
 Built for the **BlockseBlock National Hackathon 2026** — PS1: The Last-Minute Life Saver
+
+**Live app:** https://lastminute-ai-ummt2blwla-el.a.run.app
+**Try instantly:** click **"Try live demo — no login"** on the landing page.
 
 ---
 
 ## Features
 
-- Real-time Google Calendar sync with live countdown timers
-- Claude Haiku / Gemini 2.0 Flash agentic function calling (5 real tools)
-- Autonomous morning briefing generated daily
-- Escalating push notifications at 24h / 2h / 30min before deadline
-- Eisenhower Priority Matrix with drag-and-drop reprioritization
-- Pomodoro Focus Timer integrated with AI task list
-- Voice input via Web Speech API
-- Productivity score with AI-powered analysis
-- Mission Control dashboard with urgency-colored event cards
+- **Plan My Day** — Google Gemini reads your calendar and auto-blocks focus time on your real Google Calendar (runs proactively, once per day, no click needed)
+- **Agentic AI chat** — Google Gemini with function calling (5 real tools: create events, prioritise tasks, find free slots, set reminders, fetch deadlines)
+- **Brain Dump** — paste a chaotic paragraph; Gemini extracts, dates, estimates, and prioritises every task
+- **Smart Game Plan** — a ranked, time-bucketed action queue that tells you exactly what to do next (replaces the abstract priority matrix)
+- **Live Google Calendar sync** with countdowns and urgency colours
+- **Escalating push reminders** at 24h / 2h / 30 min before each deadline (Cloud Scheduler-driven)
+- **Mission Control status bar** that pulses red within 2 hours of a deadline
+- **Focus Timer** (Pomodoro / Deep Work / Sprint) with sessions saved to Firestore
+- **Productivity score** from completion rate, focus sessions, and calendar load
+- **Guided product tour**, **dark / light mode**, and **Demo Mode** (no login required)
 
 ---
 
@@ -26,25 +30,38 @@ Built for the **BlockseBlock National Hackathon 2026** — PS1: The Last-Minute 
 
 | Layer | Technology |
 |-------|-----------|
-| AI Engine | Claude Haiku (Anthropic) / Gemini 2.0 Flash |
+| AI Engine | **Google Gemini 2.0 Flash** (function calling) |
 | Calendar | Google Calendar API v3 |
 | Auth | Google OAuth 2.0 |
-| Database | Firebase Firestore |
+| Database | Google Firebase Firestore |
+| Scheduling | Google Cloud Scheduler |
+| Secrets | Google Secret Manager |
 | Backend | Python FastAPI + Uvicorn |
-| Frontend | React 18 + Vite + Tailwind CSS |
-| Deployment | Google Cloud Run |
+| Frontend | React 18 + Vite + Tailwind CSS + Framer Motion |
+| Deployment | Google Cloud Run (containerised) |
 | Notifications | Web Push API + VAPID |
+
+---
+
+## Google Technologies Used
+
+- **Google Gemini 2.0 Flash** — the core AI engine. Powers the agentic chat (function calling), the autonomous daily planner, the brain-dump task extractor, and the morning briefing.
+- **Google Calendar API** — deep two-way integration: reads events, creates events, and computes free/busy gaps for automatic focus scheduling.
+- **Google Cloud Run** — serverless container hosting the live production application.
+- **Google Cloud Scheduler** — drives all autonomous behaviour (reminder checks and morning planning).
+- **Firebase Firestore** — persistent store for sessions, tasks, conversations, reminders, and focus sessions.
+- **Google Secret Manager** — secure storage of the Firebase service-account key.
+- **Google OAuth 2.0** — secure sign-in and scoped Calendar access; no passwords stored.
 
 ---
 
 ## Local Setup
 
 ### Prerequisites
-- Python 3.11+
-- Node.js 18+
+- Python 3.11+, Node.js 18+
 - Google Cloud project with Calendar API enabled
 - Firebase project with Firestore enabled
-- Anthropic API key (or Gemini API key from Google AI Studio)
+- **Gemini API key** from Google AI Studio (https://aistudio.google.com/apikey)
 
 ### Backend
 ```bash
@@ -52,8 +69,7 @@ cd backend
 python -m venv venv
 venv\Scripts\activate
 pip install -r requirements.txt
-cp .env.example .env
-# Edit .env with your credentials
+cp .env.example .env   # add GEMINI_API_KEY, GOOGLE_CLIENT_ID/SECRET, Firebase + VAPID keys
 uvicorn main:app --reload --port 8000
 ```
 
@@ -61,28 +77,19 @@ uvicorn main:app --reload --port 8000
 ```bash
 cd frontend
 npm install
-npm run dev
-# Opens at http://localhost:5173
+npm run dev   # http://localhost:5173
 ```
 
 ### OAuth Setup
-1. Go to Google Cloud Console > APIs & Services > Credentials
-2. Create OAuth 2.0 Client ID (Web Application)
-3. Authorized origin: http://localhost:5173
-4. Redirect URI: http://localhost:8000/api/auth/callback/google
-
----
-
-## Google Technologies Used
-- **Google Calendar API** — Real event sync and creation
-- **Google OAuth 2.0** — Secure user authentication
-- **Firebase Firestore** — Real-time cloud database
-- **Google Cloud Run** — Production deployment
+1. Google Cloud Console → APIs & Services → Credentials → OAuth 2.0 Client ID (Web)
+2. Authorized origin: `http://localhost:5173`
+3. Redirect URI: `http://localhost:8000/api/auth/callback/google`
 
 ---
 
 ## Deployment
-See [DEPLOYMENT.md](./DEPLOYMENT.md)
+
+Deployed to Google Cloud Run. See `_deploy_only.ps1` (reads `backend/.env`, builds with Cloud Build, deploys the container). Reference: https://ai.google.dev/gemini-api/docs/aistudio-deploying
 
 ---
 

@@ -191,87 +191,154 @@ async def _execute(name: str, args: dict, session_id: str) -> dict:
         return {"error": str(e)}
 
 
+# ─── Gemini function-calling config (primary AI engine) ───────────────────────
+
+_GEMINI_TOOLS = [{
+    "function_declarations": [
+        {"name": t["name"], "description": t["description"], "parameters": t["input_schema"]}
+        for t in _TOOLS
+    ]
+}]
+
+_genai = None
+_GEMINI_READY = False
+_GEMINI_CHAT_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.0-flash")
+try:
+    import google.generativeai as _genai
+    _key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY") or ""
+    if _key:
+        _genai.configure(api_key=_key)
+        _GEMINI_READY = True
+        print(f"[Agent] Chat engine: Google Gemini ({_GEMINI_CHAT_MODEL})")
+except Exception as _e:
+    print(f"[Agent] Gemini unavailable, will use fallback engine: {_e}")
+
+
+def _gemini_text(resp) -> str:
+    try:
+        return (resp.text or "").strip()
+    except Exception:
+        try:
+            parts = resp.candidates[0].content.parts
+            return " ".join(getattr(p, "text", "") for p in parts if getattr(p, "text", "")).strip()
+        except Exception:
+            return ""
+
+
 # ─── Main Agent Chat ──────────────────────────────────────────────────────────
 
 
 async def chat_with_agent(message: str, session_id: str) -> AsyncGenerator[str, None]:
-    """Run a multi-turn Claude agent conversation, streaming text back."""
-
+    """
+    Multi-turn agent conversation, streaming text back.
+    Primary engine: Google Gemini (function calling). Falls back transparently
+    to a secondary engine only if Gemini is unavailable, so the demo never dies.
+    """
     history_rows = database.get_conversation_history(session_id, limit=20)
     database.save_message(session_id, "user", message)
 
-    # Build Anthropic message history
+    tz_name = database.get_user_timezone(session_id)
+    now_str, tz_name = _local_now_str(tz_name)
+    system = _SYSTEM_TEMPLATE.format(now=now_str, tz=tz_name)
+
+    if _GEMINI_READY:
+        try:
+            async for chunk in _run_gemini(message, session_id, history_rows, system):
+                yield chunk
+            return
+        except Exception as e:
+            print(f"[Agent] Gemini chat error, falling back: {e}")
+
+    async for chunk in _run_fallback(message, session_id, history_rows, system):
+        yield chunk
+
+
+async def _run_gemini(message, session_id, history_rows, system):
+    """Gemini function-calling agent loop."""
+    model = _genai.GenerativeModel(
+        _GEMINI_CHAT_MODEL, tools=_GEMINI_TOOLS, system_instruction=system,
+    )
+    history = [
+        {"role": "user" if m["role"] == "user" else "model", "parts": [m["content"]]}
+        for m in history_rows
+    ]
+    chat = model.start_chat(history=history)
+    tool_calls_log = []
+
+    resp = await chat.send_message_async(message)
+
+    for _iteration in range(10):
+        parts = resp.candidates[0].content.parts
+        calls = [p.function_call for p in parts if getattr(p, "function_call", None) and p.function_call.name]
+
+        if not calls:
+            text = _gemini_text(resp) or "Done."
+            database.save_message(session_id, "assistant", text)
+            words = text.split(" ")
+            for i, w in enumerate(words):
+                yield w + (" " if i < len(words) - 1 else "")
+            if tool_calls_log:
+                yield f"\n\n__TOOL_CALLS__:{json.dumps(tool_calls_log)}"
+            return
+
+        replies = []
+        for fc in calls:
+            try:
+                args = type(fc).to_dict(fc).get("args", {}) or {}
+            except Exception:
+                args = dict(getattr(fc, "args", {}) or {})
+            result = await _execute(fc.name, args, session_id)
+            tool_calls_log.append({"tool": fc.name, "args": args, "result": result})
+            replies.append(_genai.protos.Part(
+                function_response=_genai.protos.FunctionResponse(
+                    name=fc.name, response={"result": result},
+                )
+            ))
+        resp = await chat.send_message_async(replies)
+
+    yield "I ran into an issue completing that action. Please try again."
+
+
+async def _run_fallback(message, session_id, history_rows, system):
+    """Resilience fallback engine (used only if Gemini is unavailable)."""
     messages = []
     for msg in history_rows:
         role = "user" if msg["role"] == "user" else "assistant"
         messages.append({"role": role, "content": msg["content"]})
     messages.append({"role": "user", "content": message})
 
-    tz_name = database.get_user_timezone(session_id)
-    now_str, tz_name = _local_now_str(tz_name)
-    system  = _SYSTEM_TEMPLATE.format(now=now_str, tz=tz_name)
-
     tool_calls_log = []
-
     try:
         for _iteration in range(10):
             response = await _client.messages.create(
-                model=_MODEL,
-                max_tokens=4096,
-                system=system,
-                tools=_TOOLS,
-                messages=messages,
+                model=_MODEL, max_tokens=4096, system=system, tools=_TOOLS, messages=messages,
             )
-
             tool_use_blocks = [b for b in response.content if b.type == "tool_use"]
             text_blocks     = [b for b in response.content if b.type == "text"]
 
             if not tool_use_blocks:
-                # Pure text — stream word by word for a natural feel
                 full_text = " ".join(b.text for b in text_blocks)
                 database.save_message(session_id, "assistant", full_text)
-
                 words = full_text.split(" ")
                 for i, word in enumerate(words):
                     yield word + (" " if i < len(words) - 1 else "")
-
                 if tool_calls_log:
                     yield f"\n\n__TOOL_CALLS__:{json.dumps(tool_calls_log)}"
                 return
 
-            # Append assistant turn (with tool_use blocks) to history
             messages.append({"role": "assistant", "content": response.content})
-
-            # Execute every tool call and collect results
             tool_results = []
             for block in tool_use_blocks:
                 result = await _execute(block.name, block.input, session_id)
                 tool_calls_log.append({"tool": block.name, "args": block.input, "result": result})
                 tool_results.append({
-                    "type":        "tool_result",
-                    "tool_use_id": block.id,
-                    "content":     json.dumps(result),
+                    "type": "tool_result", "tool_use_id": block.id, "content": json.dumps(result),
                 })
-
-            # Feed results back as the next user turn
             messages.append({"role": "user", "content": tool_results})
 
         yield "I ran into an issue completing that action. Please try again."
-
-    except anthropic.APIStatusError as e:
-        print(f"[Claude] API status error {e.status_code}: {e.message}")
-        if e.status_code == 529:
-            yield "⚠️ Claude API is overloaded right now. Please try again in a moment."
-        elif e.status_code == 401:
-            yield "⚠️ Invalid Anthropic API key. Please update ANTHROPIC_API_KEY in your .env file."
-        elif e.status_code == 429:
-            yield "⚠️ Rate limit reached. Please wait a moment and try again."
-        else:
-            yield f"⚠️ API error ({e.status_code}). Please try again."
-    except anthropic.APIConnectionError:
-        yield "⚠️ Cannot reach Claude API. Check your internet connection."
     except Exception as e:
-        print(f"[Claude] Unexpected error: {e}")
+        print(f"[Agent] Fallback engine error: {e}")
         yield "⚠️ Something went wrong. Please try again."
 
 
