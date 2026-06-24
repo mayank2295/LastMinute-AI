@@ -242,9 +242,13 @@ async def get_gaps(
     date: str = Query(...),
     duration_minutes: int = Query(default=60),
 ):
+    if demo_data.is_demo(session_id):
+        return {"gaps": []}
     try:
         gaps = calendar_service.get_calendar_gaps(session_id, date, duration_minutes)
         return {"gaps": gaps}
+    except ValueError as e:
+        raise HTTPException(status_code=401, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -260,8 +264,7 @@ async def get_tasks(session_id: str):
 async def create_task(session_id: str, body: CreateTaskRequest):
     if not body.title or not body.title.strip():
         raise HTTPException(status_code=400, detail="Title is required")
-    session = database.get_session(session_id)
-    if not session:
+    if not demo_data.is_demo(session_id) and not database.get_session(session_id):
         raise HTTPException(status_code=401, detail="Not authenticated")
 
     # Auto-assign priority based on deadline if not provided
@@ -346,8 +349,7 @@ async def prioritize(session_id: str, body: PrioritizeRequest):
 
 @app.post("/api/focus-sessions/{session_id}")
 async def save_focus_session(session_id: str, body: FocusSessionRequest):
-    session = database.get_session(session_id)
-    if not session:
+    if not demo_data.is_demo(session_id) and not database.get_session(session_id):
         raise HTTPException(status_code=401, detail="Not authenticated")
     record = database.save_focus_session(session_id, body.model_dump())
     return record
