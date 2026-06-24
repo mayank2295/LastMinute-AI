@@ -51,6 +51,10 @@ class PrioritizeRequest(BaseModel):
     tasks: List[dict]
 
 
+class MoveTaskRequest(BaseModel):
+    priority: Priority
+
+
 class SubscribeRequest(BaseModel):
     subscription: dict
     task_title: str

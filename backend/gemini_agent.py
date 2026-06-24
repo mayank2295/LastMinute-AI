@@ -3,113 +3,106 @@ import json
 from datetime import datetime, timezone
 from typing import AsyncGenerator
 
-import google.generativeai as genai
-from google.generativeai import protos
+import anthropic
 
 import database
 import calendar_service
 import task_engine
 
-genai.configure(api_key=os.getenv("GEMINI_API_KEY", ""))
+_client = anthropic.AsyncAnthropic(api_key=os.getenv("ANTHROPIC_API_KEY", ""))
+_MODEL  = "claude-haiku-4-5-20251001"
 
-# ─── Tool Declarations ────────────────────────────────────────────────────────
+# ─── Tool Declarations (Anthropic JSON-Schema format) ─────────────────────────
 
-_TOOL_DECLARATIONS = [
-    protos.FunctionDeclaration(
-        name="create_calendar_event",
-        description="Creates a real event in the user's Google Calendar and returns the event link.",
-        parameters=protos.Schema(
-            type=protos.Type.OBJECT,
-            properties={
-                "title":            protos.Schema(type=protos.Type.STRING, description="Event title"),
-                "start_time":       protos.Schema(type=protos.Type.STRING, description="ISO 8601 start time"),
-                "end_time":         protos.Schema(type=protos.Type.STRING, description="ISO 8601 end time"),
-                "description":      protos.Schema(type=protos.Type.STRING, description="Optional description"),
-                "reminder_minutes": protos.Schema(type=protos.Type.INTEGER, description="Popup reminder minutes before"),
+_TOOLS = [
+    {
+        "name": "create_calendar_event",
+        "description": "Creates a real event in the user's Google Calendar and returns the event link.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "title":            {"type": "string",  "description": "Event title"},
+                "start_time":       {"type": "string",  "description": "ISO 8601 start time"},
+                "end_time":         {"type": "string",  "description": "ISO 8601 end time"},
+                "description":      {"type": "string",  "description": "Optional description"},
+                "reminder_minutes": {"type": "integer", "description": "Popup reminder minutes before"},
             },
-            required=["title", "start_time", "end_time"],
-        ),
-    ),
-    protos.FunctionDeclaration(
-        name="get_upcoming_deadlines",
-        description="Fetches real upcoming events from the user's Google Calendar for the next N days.",
-        parameters=protos.Schema(
-            type=protos.Type.OBJECT,
-            properties={
-                "days": protos.Schema(type=protos.Type.INTEGER, description="Days ahead to look"),
+            "required": ["title", "start_time", "end_time"],
+        },
+    },
+    {
+        "name": "get_upcoming_deadlines",
+        "description": "Fetches real upcoming events from the user's Google Calendar for the next N days.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "days": {"type": "integer", "description": "Days ahead to look"},
             },
-            required=["days"],
-        ),
-    ),
-    protos.FunctionDeclaration(
-        name="prioritize_tasks",
-        description=(
+            "required": ["days"],
+        },
+    },
+    {
+        "name": "prioritize_tasks",
+        "description": (
             "Scores and ranks a list of tasks using urgency (deadline proximity), "
-            "importance (user-defined 0-10), and effort estimate. "
+            "importance (user-defined 0–10), and effort estimate. "
             "Assigns each task to the correct Eisenhower matrix quadrant."
         ),
-        parameters=protos.Schema(
-            type=protos.Type.OBJECT,
-            properties={
-                "tasks": protos.Schema(
-                    type=protos.Type.ARRAY,
-                    description="List of tasks to prioritize",
-                    items=protos.Schema(
-                        type=protos.Type.OBJECT,
-                        properties={
-                            "title":            protos.Schema(type=protos.Type.STRING),
-                            "deadline":         protos.Schema(type=protos.Type.STRING),
-                            "importance_score": protos.Schema(type=protos.Type.NUMBER),
-                            "effort_estimate":  protos.Schema(type=protos.Type.INTEGER,
-                                                              description="Estimated minutes"),
-                            "description":      protos.Schema(type=protos.Type.STRING),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "tasks": {
+                    "type": "array",
+                    "description": "List of tasks to prioritize",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "title":            {"type": "string"},
+                            "deadline":         {"type": "string"},
+                            "importance_score": {"type": "number"},
+                            "effort_estimate":  {"type": "integer", "description": "Estimated minutes"},
+                            "description":      {"type": "string"},
                         },
-                    ),
-                ),
+                    },
+                },
             },
-            required=["tasks"],
-        ),
-    ),
-    protos.FunctionDeclaration(
-        name="suggest_time_blocks",
-        description="Finds free calendar gaps on a given date and suggests the best focus time slots.",
-        parameters=protos.Schema(
-            type=protos.Type.OBJECT,
-            properties={
-                "date":             protos.Schema(type=protos.Type.STRING,
-                                                  description="Date as YYYY-MM-DD"),
-                "duration_minutes": protos.Schema(type=protos.Type.INTEGER,
-                                                  description="Required block length in minutes"),
+            "required": ["tasks"],
+        },
+    },
+    {
+        "name": "suggest_time_blocks",
+        "description": "Finds free calendar gaps on a given date and suggests the best focus time slots.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "date":             {"type": "string",  "description": "Date as YYYY-MM-DD"},
+                "duration_minutes": {"type": "integer", "description": "Required block length in minutes"},
             },
-            required=["date", "duration_minutes"],
-        ),
-    ),
-    protos.FunctionDeclaration(
-        name="set_escalating_reminder",
-        description=(
+            "required": ["date", "duration_minutes"],
+        },
+    },
+    {
+        "name": "set_escalating_reminder",
+        "description": (
             "Schedules browser push notifications at 24 h, 2 h, and 30 min "
             "before a task deadline."
         ),
-        parameters=protos.Schema(
-            type=protos.Type.OBJECT,
-            properties={
-                "task_title":        protos.Schema(type=protos.Type.STRING),
-                "deadline":          protos.Schema(type=protos.Type.STRING,
-                                                   description="ISO 8601 deadline"),
-                "push_subscription": protos.Schema(type=protos.Type.STRING,
-                                                   description="JSON-encoded push subscription"),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "task_title":        {"type": "string"},
+                "deadline":          {"type": "string",  "description": "ISO 8601 deadline"},
+                "push_subscription": {"type": "string",  "description": "JSON-encoded push subscription"},
             },
-            required=["task_title", "deadline"],
-        ),
-    ),
+            "required": ["task_title", "deadline"],
+        },
+    },
 ]
-
-_TOOLS = [protos.Tool(function_declarations=_TOOL_DECLARATIONS)]
 
 # ─── System Prompt ────────────────────────────────────────────────────────────
 
-_SYSTEM = f"""You are LastMinute AI — a mission-critical productivity co-pilot built for people in deadline panic.
-Today's date/time (UTC): {datetime.now(timezone.utc).strftime('%A %d %B %Y, %H:%M')} UTC.
+_SYSTEM_TEMPLATE = """You are LastMinute AI — a mission-critical productivity co-pilot built for people in deadline panic.
+Today's date/time (UTC): {now} UTC.
 
 You have REAL tools connected to the user's Google Calendar. When a user mentions any task, deadline, or scheduling need:
 1. IMMEDIATELY call the appropriate tool — do not just describe what you would do.
@@ -185,73 +178,80 @@ async def _execute(name: str, args: dict, session_id: str) -> dict:
 
 
 async def chat_with_agent(message: str, session_id: str) -> AsyncGenerator[str, None]:
-    """Run a multi-turn Gemini agent conversation, streaming text back."""
+    """Run a multi-turn Claude agent conversation, streaming text back."""
 
-    # Load history and save incoming message
     history_rows = database.get_conversation_history(session_id, limit=20)
     database.save_message(session_id, "user", message)
 
-    # Build Gemini history (skip the very last user message — we'll send it fresh)
-    gemini_history = []
+    # Build Anthropic message history
+    messages = []
     for msg in history_rows:
-        role = "user" if msg["role"] == "user" else "model"
-        gemini_history.append({"role": role, "parts": [{"text": msg["content"]}]})
+        role = "user" if msg["role"] == "user" else "assistant"
+        messages.append({"role": role, "content": msg["content"]})
+    messages.append({"role": "user", "content": message})
 
-    model = genai.GenerativeModel(
-        model_name="gemini-2.0-flash",
-        system_instruction=_SYSTEM,
-        tools=_TOOLS,
-    )
-
-    chat = model.start_chat(history=gemini_history)
+    now_str = datetime.now(timezone.utc).strftime("%A %d %B %Y, %H:%M")
+    system  = _SYSTEM_TEMPLATE.format(now=now_str)
 
     tool_calls_log = []
-    current_message = message
 
-    # Agentic loop: keep going until the model produces text (no more tool calls)
-    for _iteration in range(10):  # safety cap
-        response = chat.send_message(current_message)
-        candidate = response.candidates[0]
-
-        # Check for function calls
-        function_parts = [
-            p for p in candidate.content.parts
-            if hasattr(p, "function_call") and p.function_call.name
-        ]
-
-        if not function_parts:
-            # Pure text response — extract and stream
-            full_text = "".join(
-                p.text for p in candidate.content.parts
-                if hasattr(p, "text") and p.text
+    try:
+        for _iteration in range(10):
+            response = await _client.messages.create(
+                model=_MODEL,
+                max_tokens=4096,
+                system=system,
+                tools=_TOOLS,
+                messages=messages,
             )
-            database.save_message(session_id, "assistant", full_text)
 
-            # Stream word by word for a natural feel
-            words = full_text.split(" ")
-            for i, word in enumerate(words):
-                yield word + (" " if i < len(words) - 1 else "")
+            tool_use_blocks = [b for b in response.content if b.type == "tool_use"]
+            text_blocks     = [b for b in response.content if b.type == "text"]
 
-            # Append tool call summary for frontend to update the task board
-            if tool_calls_log:
-                yield f"\n\n__TOOL_CALLS__:{json.dumps(tool_calls_log)}"
-            return
+            if not tool_use_blocks:
+                # Pure text — stream word by word for a natural feel
+                full_text = " ".join(b.text for b in text_blocks)
+                database.save_message(session_id, "assistant", full_text)
 
-        # Execute all function calls in this turn
-        tool_responses = []
-        for part in function_parts:
-            fc = part.function_call
-            result = await _execute(fc.name, dict(fc.args), session_id)
-            tool_calls_log.append({"tool": fc.name, "args": dict(fc.args), "result": result})
-            tool_responses.append({
-                "function_response": {
-                    "name": fc.name,
-                    "response": result,
-                }
-            })
+                words = full_text.split(" ")
+                for i, word in enumerate(words):
+                    yield word + (" " if i < len(words) - 1 else "")
 
-        # Feed all results back — send as a list of parts
-        current_message = tool_responses if len(tool_responses) > 1 else tool_responses[0]
+                if tool_calls_log:
+                    yield f"\n\n__TOOL_CALLS__:{json.dumps(tool_calls_log)}"
+                return
 
-    # Fallback if loop cap hit
-    yield "I ran into an issue completing that action. Please try again."
+            # Append assistant turn (with tool_use blocks) to history
+            messages.append({"role": "assistant", "content": response.content})
+
+            # Execute every tool call and collect results
+            tool_results = []
+            for block in tool_use_blocks:
+                result = await _execute(block.name, block.input, session_id)
+                tool_calls_log.append({"tool": block.name, "args": block.input, "result": result})
+                tool_results.append({
+                    "type":        "tool_result",
+                    "tool_use_id": block.id,
+                    "content":     json.dumps(result),
+                })
+
+            # Feed results back as the next user turn
+            messages.append({"role": "user", "content": tool_results})
+
+        yield "I ran into an issue completing that action. Please try again."
+
+    except anthropic.APIStatusError as e:
+        print(f"[Claude] API status error {e.status_code}: {e.message}")
+        if e.status_code == 529:
+            yield "⚠️ Claude API is overloaded right now. Please try again in a moment."
+        elif e.status_code == 401:
+            yield "⚠️ Invalid Anthropic API key. Please update ANTHROPIC_API_KEY in your .env file."
+        elif e.status_code == 429:
+            yield "⚠️ Rate limit reached. Please wait a moment and try again."
+        else:
+            yield f"⚠️ API error ({e.status_code}). Please try again."
+    except anthropic.APIConnectionError:
+        yield "⚠️ Cannot reach Claude API. Check your internet connection."
+    except Exception as e:
+        print(f"[Claude] Unexpected error: {e}")
+        yield "⚠️ Something went wrong. Please try again."

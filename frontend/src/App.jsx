@@ -1,173 +1,61 @@
-import { useState, useEffect, useCallback } from 'react'
-import { motion } from 'framer-motion'
-import { LogOut, Zap } from 'lucide-react'
-import { useQueryClient } from '@tanstack/react-query'
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { AuthProvider, useAuth } from './context/AuthContext'
 
-import OnboardingFlow from './components/OnboardingFlow'
-import ChatAgent from './components/ChatAgent'
-import CalendarSync from './components/CalendarSync'
-import TaskBoard from './components/TaskBoard'
-import DeadlineAlert from './components/DeadlineAlert'
-import ProductivityScore from './components/ProductivityScore'
-import { useCalendar } from './hooks/useCalendar'
-import { getAuthStatus } from './services/api'
-import { registerServiceWorker } from './services/notifications'
+import Landing    from './pages/Landing'
+import Login      from './pages/Login'
+import DashboardLayout from './pages/dashboard/DashboardLayout'
+import Home       from './pages/dashboard/Home'
+import PriorityMatrix from './pages/dashboard/PriorityMatrix'
+import FocusTimer from './pages/dashboard/FocusTimer'
+import Reminders  from './pages/dashboard/Reminders'
+import Productivity from './pages/dashboard/Productivity'
+import Calendar   from './pages/dashboard/Calendar'
+import Tasks      from './pages/dashboard/Tasks'
+
+const qc = new QueryClient({ defaultOptions: { queries: { retry: 1, staleTime: 2 * 60_000 } } })
+
+function ProtectedRoute({ children }) {
+  const { user, loading } = useAuth()
+  const location = useLocation()
+  if (loading) return (
+    <div className="min-h-screen flex items-center justify-center">
+      <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+    </div>
+  )
+  if (!user) return <Navigate to="/login" state={{ from: location }} replace />
+  return children
+}
+
+function PublicRoute({ children }) {
+  const { user, loading } = useAuth()
+  if (loading) return null
+  if (user) return <Navigate to="/dashboard" replace />
+  return children
+}
 
 export default function App() {
-  const [sessionId, setSessionId] = useState(null)
-  const [userEmail, setUserEmail] = useState('')
-  const [userName, setUserName] = useState('')
-  const [authChecked, setAuthChecked] = useState(false)
-  const [taskRefresh, setTaskRefresh] = useState(0)
-  const qc = useQueryClient()
-
-  useEffect(() => {
-    // Google redirects back to this page with ?session_id=...&user=...&name=...
-    const params = new URLSearchParams(window.location.search)
-    const sid   = params.get('session_id')
-    const email = params.get('user')
-    const name  = params.get('name')
-
-    if (sid && email) {
-      // Fresh OAuth callback — store and activate
-      setSessionId(sid)
-      setUserEmail(decodeURIComponent(email))
-      setUserName(decodeURIComponent(name || ''))
-      localStorage.setItem('lm_session_id', sid)
-      localStorage.setItem('lm_email', email)
-      localStorage.setItem('lm_name', name || '')
-      // Clean up URL without reloading
-      window.history.replaceState({}, '', '/')
-      setAuthChecked(true)
-      registerServiceWorker()
-      return
-    }
-
-    // Check for a persisted session
-    const stored = localStorage.getItem('lm_session_id')
-    if (stored) {
-      getAuthStatus(stored)
-        .then(({ authenticated }) => {
-          if (authenticated) {
-            setSessionId(stored)
-            setUserEmail(localStorage.getItem('lm_email') || '')
-            setUserName(localStorage.getItem('lm_name') || '')
-            registerServiceWorker()
-          } else {
-            // Token expired or session gone — clear storage
-            localStorage.removeItem('lm_session_id')
-            localStorage.removeItem('lm_email')
-            localStorage.removeItem('lm_name')
-          }
-        })
-        .catch(() => {})
-        .finally(() => setAuthChecked(true))
-    } else {
-      setAuthChecked(true)
-    }
-  }, [])
-
-  const handleLogout = () => {
-    localStorage.removeItem('lm_session_id')
-    localStorage.removeItem('lm_email')
-    localStorage.removeItem('lm_name')
-    setSessionId(null)
-    setUserEmail('')
-    setUserName('')
-    qc.clear()
-  }
-
-  const handleTasksUpdated = useCallback(() => {
-    setTaskRefresh(n => n + 1)
-    qc.invalidateQueries({ queryKey: ['tasks', sessionId] })
-    qc.invalidateQueries({ queryKey: ['productivity', sessionId] })
-  }, [sessionId, qc])
-
-  const { data: calEvents = [] } = useCalendar(sessionId)
-
-  if (!authChecked) {
-    return (
-      <div className="min-h-screen bg-space flex items-center justify-center">
-        <div className="w-6 h-6 border-2 border-blue border-t-transparent rounded-full animate-spin" />
-      </div>
-    )
-  }
-
-  if (!sessionId) {
-    return <OnboardingFlow />
-  }
-
   return (
-    <div className="h-screen bg-space flex flex-col overflow-hidden">
-      {/* Top bar */}
-      <header className="flex-shrink-0 flex items-center gap-3 px-4 py-2.5
-                         border-b border-border bg-panel/80 backdrop-blur-sm">
-        <div className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-lg bg-blue/20 border border-blue/30
-                          flex items-center justify-center shadow-glow-blue">
-            <Zap className="w-4 h-4 text-blue-glow" />
-          </div>
-          <span className="font-bold text-white text-sm tracking-tight">LastMinute AI</span>
-        </div>
-
-        <div className="flex-1 min-w-0">
-          <ProductivityScore sessionId={sessionId} />
-        </div>
-
-        <div className="flex items-center gap-3 flex-shrink-0">
-          <span className="text-xs text-text-muted hidden sm:block truncate max-w-[180px]">
-            {userName || userEmail}
-          </span>
-          <button
-            onClick={handleLogout}
-            className="btn-ghost text-xs flex items-center gap-1.5"
-          >
-            <LogOut className="w-3.5 h-3.5" />
-            Sign out
-          </button>
-        </div>
-      </header>
-
-      {/* Deadline alerts strip */}
-      {calEvents.length > 0 && (
-        <DeadlineAlert events={calEvents} sessionId={sessionId} />
-      )}
-
-      {/* Main 3-column layout */}
-      <main className="flex-1 flex overflow-hidden">
-        {/* Left: Calendar */}
-        <motion.aside
-          initial={{ opacity: 0, x: -20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.4 }}
-          className="hidden md:flex flex-col w-72 xl:w-80 border-r border-border flex-shrink-0"
-        >
-          <CalendarSync sessionId={sessionId} />
-        </motion.aside>
-
-        {/* Center: Chat Agent */}
-        <motion.section
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 0.1 }}
-          className="flex-1 flex flex-col min-w-0"
-        >
-          <ChatAgent
-            sessionId={sessionId}
-            onTasksUpdated={handleTasksUpdated}
-          />
-        </motion.section>
-
-        {/* Right: Task Priority Board */}
-        <motion.aside
-          initial={{ opacity: 0, x: 20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.4, delay: 0.2 }}
-          className="hidden lg:flex flex-col w-80 xl:w-96 border-l border-border flex-shrink-0"
-        >
-          <TaskBoard sessionId={sessionId} refreshTrigger={taskRefresh} />
-        </motion.aside>
-      </main>
-    </div>
+    <QueryClientProvider client={qc}>
+      <AuthProvider>
+        <BrowserRouter>
+          <Routes>
+            <Route path="/" element={<PublicRoute><Landing /></PublicRoute>} />
+            <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
+            <Route path="/dashboard" element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>}>
+              <Route index    element={<Home />} />
+              <Route path="matrix"      element={<PriorityMatrix />} />
+              <Route path="timer"       element={<FocusTimer />} />
+              <Route path="reminders"   element={<Reminders />} />
+              <Route path="productivity" element={<Productivity />} />
+              <Route path="calendar"    element={<Calendar />} />
+              <Route path="tasks"       element={<Tasks />} />
+            </Route>
+            {/* Catch-all */}
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </BrowserRouter>
+      </AuthProvider>
+    </QueryClientProvider>
   )
 }

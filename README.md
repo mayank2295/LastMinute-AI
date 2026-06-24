@@ -1,149 +1,90 @@
-# LastMinute AI — Mission Control for Your Deadlines
+﻿# LastMinute AI — Your Deadline Co-Pilot
 
-> AI-powered productivity companion for the BlockseBlock Hackathon (PS1: The Last-Minute Life Saver)
+> AI-powered productivity companion that connects to Google Calendar,
+> detects upcoming deadlines, and proactively helps you complete tasks
+> before it's too late.
 
-**Live stack:** React 18 + Vite · FastAPI · Gemini 2.0 Flash (function calling) · Google Calendar API (OAuth2)
+Built for the **BlockseBlock National Hackathon 2026** — PS1: The Last-Minute Life Saver
 
 ---
 
 ## Features
 
-| Feature | How |
-|---------|-----|
-| Real Google Calendar sync | OAuth2, live read + write |
-| Gemini agentic chat | Function calling, multi-turn memory, tool execution |
-| Eisenhower Priority Matrix | Auto-scored by urgency × importance |
-| Escalating push reminders | 24h → 2h → 30min Web Push |
-| Voice input | Web Speech API (Chrome/Edge) |
-| Productivity Score (0–100) | Calendar load + task completion analysis |
+- Real-time Google Calendar sync with live countdown timers
+- Claude Haiku / Gemini 2.0 Flash agentic function calling (5 real tools)
+- Autonomous morning briefing generated daily
+- Escalating push notifications at 24h / 2h / 30min before deadline
+- Eisenhower Priority Matrix with drag-and-drop reprioritization
+- Pomodoro Focus Timer integrated with AI task list
+- Voice input via Web Speech API
+- Productivity score with AI-powered analysis
+- Mission Control dashboard with urgency-colored event cards
 
 ---
 
-## Quick Start
+## Tech Stack
 
-### 1. Google Cloud Console setup
+| Layer | Technology |
+|-------|-----------|
+| AI Engine | Claude Haiku (Anthropic) / Gemini 2.0 Flash |
+| Calendar | Google Calendar API v3 |
+| Auth | Google OAuth 2.0 |
+| Database | Firebase Firestore |
+| Backend | Python FastAPI + Uvicorn |
+| Frontend | React 18 + Vite + Tailwind CSS |
+| Deployment | Google Cloud Run |
+| Notifications | Web Push API + VAPID |
 
-1. Go to [console.cloud.google.com](https://console.cloud.google.com)
-2. Create a project (or use existing)
-3. Enable APIs:
-   - **Google Calendar API**
-   - **People API** (for userinfo)
-4. Go to **APIs & Services → Credentials → Create OAuth 2.0 Client ID**
-   - Application type: **Web application**
-   - Authorised redirect URI: `http://localhost:8000/auth/callback`
-5. Copy Client ID and Client Secret
+---
 
-### 2. Gemini API key
+## Local Setup
 
-1. Go to [aistudio.google.com/app/apikey](https://aistudio.google.com/app/apikey)
-2. Create an API key
-3. Copy it
+### Prerequisites
+- Python 3.11+
+- Node.js 18+
+- Google Cloud project with Calendar API enabled
+- Firebase project with Firestore enabled
+- Anthropic API key (or Gemini API key from Google AI Studio)
 
-### 3. VAPID keys for push notifications
-
-```bash
-pip install py-vapid
-python -c "
-from py_vapid import Vapid
-v = Vapid()
-v.generate_keys()
-print('VAPID_PUBLIC_KEY=', v.public_key)
-print('VAPID_PRIVATE_KEY=', v.private_key)
-"
-```
-
-### 4. Configure environment
-
-```bash
-cd lastminute-ai
-cp .env.example backend/.env
-# Edit backend/.env with your real keys
-```
-
-### 5. Run backend
-
+### Backend
 ```bash
 cd backend
 python -m venv venv
-# Windows:
 venv\Scripts\activate
-# Mac/Linux:
-source venv/bin/activate
-
 pip install -r requirements.txt
+cp .env.example .env
+# Edit .env with your credentials
 uvicorn main:app --reload --port 8000
 ```
 
-Backend runs at: http://localhost:8000
-API docs: http://localhost:8000/docs
-
-### 6. Run frontend
-
+### Frontend
 ```bash
 cd frontend
 npm install
 npm run dev
+# Opens at http://localhost:5173
 ```
 
-Frontend runs at: http://localhost:5173
+### OAuth Setup
+1. Go to Google Cloud Console > APIs & Services > Credentials
+2. Create OAuth 2.0 Client ID (Web Application)
+3. Authorized origin: http://localhost:5173
+4. Redirect URI: http://localhost:8000/api/auth/callback/google
 
 ---
 
-## Deployment (Google Cloud Run)
-
-```bash
-# Build and push image
-gcloud builds submit --tag gcr.io/YOUR_PROJECT/lastminute-ai
-
-# Deploy
-gcloud run deploy lastminute-ai \
-  --image gcr.io/YOUR_PROJECT/lastminute-ai \
-  --platform managed \
-  --region us-central1 \
-  --allow-unauthenticated \
-  --set-env-vars GEMINI_API_KEY=xxx,GOOGLE_CLIENT_ID=xxx,GOOGLE_CLIENT_SECRET=xxx,GOOGLE_REDIRECT_URI=https://YOUR_SERVICE_URL/auth/callback,VAPID_PUBLIC_KEY=xxx,VAPID_PRIVATE_KEY=xxx,FRONTEND_URL=https://YOUR_SERVICE_URL
-```
-
-Update your Google OAuth redirect URI to the Cloud Run URL in Google Console.
+## Google Technologies Used
+- **Google Calendar API** — Real event sync and creation
+- **Google OAuth 2.0** — Secure user authentication
+- **Firebase Firestore** — Real-time cloud database
+- **Google Cloud Run** — Production deployment
 
 ---
 
-## Architecture
+## Deployment
+See [DEPLOYMENT.md](./DEPLOYMENT.md)
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│  Browser                                                     │
-│  ┌──────────┐ ┌──────────────────┐ ┌────────────────────┐  │
-│  │ Calendar │ │  Chat (Gemini)   │ │  Priority Matrix   │  │
-│  │ Sidebar  │ │  Streaming SSE   │ │  Eisenhower Board  │  │
-│  └──────────┘ └──────────────────┘ └────────────────────┘  │
-└──────────────────────────┬──────────────────────────────────┘
-                           │ REST + SSE
-┌──────────────────────────▼──────────────────────────────────┐
-│  FastAPI Backend                                             │
-│  ┌──────────────────┐  ┌──────────────────────────────────┐ │
-│  │  gemini_agent.py │  │  calendar_service.py             │ │
-│  │  Gemini 2.0 Flash│  │  Google Calendar API (OAuth2)    │ │
-│  │  Function Calling│  │  Read events + Create events     │ │
-│  └──────────────────┘  └──────────────────────────────────┘ │
-│  ┌──────────────────┐  ┌──────────────────────────────────┐ │
-│  │  task_engine.py  │  │  notification_service.py         │ │
-│  │  Eisenhower score│  │  Web Push (VAPID) background loop│ │
-│  └──────────────────┘  └──────────────────────────────────┘ │
-│  SQLite (sessions · conversations · tasks · reminders)       │
-└─────────────────────────────────────────────────────────────┘
-```
+---
 
-## Gemini Function Calling Tools
-
-| Tool | What it does |
-|------|-------------|
-| `create_calendar_event` | Creates a real event in Google Calendar |
-| `get_upcoming_deadlines` | Fetches events from Calendar API |
-| `prioritize_tasks` | Scores tasks via Eisenhower matrix |
-| `suggest_time_blocks` | Finds calendar gaps for focus work |
-| `set_escalating_reminder` | Schedules 24h/2h/30m push notifications |
-
-## Environment Variables
-
-See `.env.example` for all required variables.
+## License
+MIT

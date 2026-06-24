@@ -146,6 +146,14 @@ def complete_task(task_id: str, session_id: str):
         doc_ref.update({"completed": True})
 
 
+def move_task(task_id: str, session_id: str, new_priority: str):
+    db = _db()
+    doc_ref = db.collection("tasks").document(task_id)
+    doc = doc_ref.get()
+    if doc.exists and doc.to_dict().get("session_id") == session_id:
+        doc_ref.update({"priority": new_priority})
+
+
 # ─── Reminders ────────────────────────────────────────────────────────────────
 # Collection: reminders/{auto_id}
 
@@ -182,3 +190,20 @@ def update_reminder_sent(reminder_id: str, reminder_type: str):
     """reminder_id is the Firestore document ID string."""
     col = f"reminder_{reminder_type}_sent"
     _db().collection("reminders").document(reminder_id).update({col: True})
+
+
+def get_reminders(session_id: str) -> List[dict]:
+    """Returns all reminders for a session, newest first."""
+    docs = (
+        _db()
+        .collection("reminders")
+        .where("session_id", "==", session_id)
+        .stream()
+    )
+    result = []
+    for doc in docs:
+        data = doc.to_dict()
+        data["id"] = doc.id
+        result.append(data)
+    result.sort(key=lambda r: r.get("created_at", ""), reverse=True)
+    return result

@@ -1,19 +1,40 @@
-# Python
+# ── Secrets & credentials ──────────────────────────────────────────────────
+backend/.env
+backend/firebase-key.json
+frontend/.env
+frontend/.env.production
+frontend/.env.local
+.env
+*.json.secret
+*.json.key
+lastminuteai-firebase-adminsdk*.json
+client_secret*.json
+
+# ── Build artifacts ─────────────────────────────────────────────────────────
+frontend/node_modules/
+frontend/dist/
+backend/static/
+
+# ── Python ──────────────────────────────────────────────────────────────────
 __pycache__/
+backend/__pycache__/
 *.py[cod]
 *.pyo
-venv/
-.venv/
+*.pyd
+backend/venv/
+backend/.venv/
+*.egg-info/
+.pytest_cache/
+
+# ── Node ────────────────────────────────────────────────────────────────────
+node_modules/
+npm-debug.log*
+
+# ── General ─────────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+*.log
 *.db
 *.sqlite3
-backend/.env
-
-# Node
-node_modules/
-frontend/dist/
-frontend/.env
-
-# General
-.env
-.DS_Store
-*.log
+.vscode/
+.idea/

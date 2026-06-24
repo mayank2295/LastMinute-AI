@@ -3,7 +3,7 @@ import uuid
 import json
 import asyncio
 from contextlib import asynccontextmanager
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 from fastapi import FastAPI, HTTPException, Query
@@ -19,7 +19,7 @@ import calendar_service
 import gemini_agent
 import task_engine
 import notification_service
-from models import ChatRequest, CreateEventRequest, PrioritizeRequest, SubscribeRequest
+from models import ChatRequest, CreateEventRequest, PrioritizeRequest, SubscribeRequest, MoveTaskRequest
 
 
 @asynccontextmanager
@@ -73,7 +73,7 @@ async def oauth_callback(code: str, state: str):
         frontend = os.getenv("FRONTEND_URL", "http://localhost:5173")
         name = user_info.get("name", "").replace(" ", "%20")
         return RedirectResponse(
-            url=f"{frontend}?session_id={state}&user={user_info['email']}&name={name}",
+            url=f"{frontend}/dashboard?session_id={state}&user={user_info['email']}&name={name}",
             status_code=302,
         )
     except Exception as e:
@@ -88,13 +88,48 @@ async def auth_status(session_id: str):
     return {"authenticated": False}
 
 
+@app.get("/api/debug/session/{session_id}")
+async def debug_session(session_id: str):
+    """Diagnostic endpoint — shows token metadata (no secrets exposed)."""
+    session = database.get_session(session_id)
+    if not session:
+        return {"error": "session not found", "session_id": session_id}
+    return {
+        "session_id":        session_id,
+        "user_id":           session.get("user_id"),
+        "has_access_token":  bool(session.get("access_token")),
+        "has_refresh_token": bool(session.get("refresh_token")),
+        "token_expiry":      session.get("token_expiry"),
+        "created_at":        session.get("created_at"),
+        "updated_at":        session.get("updated_at"),
+    }
+
+
+@app.get("/api/me")
+async def get_me(session_id: str = Query(...)):
+    session = database.get_session(session_id)
+    if not session:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    email = session.get("user_id", "")
+    name_guess = email.split("@")[0].replace(".", " ").replace("_", " ").title()
+    return {"session_id": session_id, "email": email, "name": name_guess}
+
+
+@app.get("/api/reminders/{session_id}")
+async def get_reminders(session_id: str):
+    return {"reminders": database.get_reminders(session_id)}
+
+
 # ─── Chat / Agent ─────────────────────────────────────────────────────────────
 
 @app.post("/api/chat")
 async def chat(req: ChatRequest):
     async def stream():
-        async for chunk in gemini_agent.chat_with_agent(req.message, req.session_id):
-            yield f"data: {json.dumps({'chunk': chunk})}\n\n"
+        try:
+            async for chunk in gemini_agent.chat_with_agent(req.message, req.session_id):
+                yield f"data: {json.dumps({'chunk': chunk})}\n\n"
+        except Exception as e:
+            yield f"data: {json.dumps({'chunk': f'⚠️ Server error: {str(e)[:100]}'})}\n\n"
         yield "data: [DONE]\n\n"
 
     return StreamingResponse(stream(), media_type="text/event-stream")
@@ -170,6 +205,12 @@ async def complete_task(session_id: str, task_id: str):
     return {"success": True}
 
 
+@app.patch("/api/tasks/{session_id}/{task_id}/move")
+async def move_task(session_id: str, task_id: str, body: MoveTaskRequest):
+    database.move_task(task_id, session_id, body.priority.value)
+    return {"success": True}
+
+
 # ─── Productivity ─────────────────────────────────────────────────────────────
 
 @app.get("/api/productivity/{session_id}")
@@ -198,6 +239,93 @@ async def subscribe(session_id: str, body: SubscribeRequest):
         push_subscription=json.dumps(body.subscription),
     )
     return {"success": True}
+
+
+# ─── Mission Brief ───────────────────────────────────────────────────────────
+
+@app.get("/api/briefing/{session_id}")
+async def get_briefing(session_id: str):
+    """
+    Returns a structured AI briefing for the Mission Brief screen.
+    Called once after login to give users a personalised overview.
+    """
+    session = database.get_session(session_id)
+    if not session:
+        return {"error": "Not authenticated"}
+
+    # Get first-name from email
+    email = session.get("user_id", "")
+    first_name = email.split("@")[0].replace(".", " ").replace("_", " ").title()
+    hour = datetime.now().hour
+    greeting = "Good morning" if hour < 12 else "Good afternoon" if hour < 18 else "Good evening"
+
+    try:
+        events = calendar_service.get_upcoming_events(session_id, days=3)
+    except Exception:
+        events = []
+
+    tasks = database.get_tasks(session_id)
+
+    # Classify events by urgency
+    now = datetime.now(timezone.utc)
+    critical, high, medium = [], [], []
+    for ev in events:
+        s = ev.get("start_time", "")
+        if "T" not in s:
+            continue
+        try:
+            dt = datetime.fromisoformat(s.replace("Z", "+00:00"))
+            if not dt.tzinfo:
+                dt = dt.replace(tzinfo=timezone.utc)
+            h = (dt - now).total_seconds() / 3600
+            if h < 0:
+                pass
+            elif h < 4:
+                critical.append(ev)
+            elif h < 24:
+                high.append(ev)
+            elif h < 72:
+                medium.append(ev)
+        except Exception:
+            pass
+
+    score_data = task_engine.calculate_productivity_score(events, tasks)
+
+    # Build urgency-sorted deadline list (top 5)
+    deadline_events = []
+    for ev in events[:5]:
+        s = ev.get("start_time", "")
+        urgency = "low"
+        if "T" in s:
+            try:
+                dt = datetime.fromisoformat(s.replace("Z", "+00:00"))
+                if not dt.tzinfo:
+                    dt = dt.replace(tzinfo=timezone.utc)
+                h = (dt - now).total_seconds() / 3600
+                if h < 0:
+                    urgency = "overdue"
+                elif h < 4:
+                    urgency = "critical"
+                elif h < 24:
+                    urgency = "high"
+                elif h < 72:
+                    urgency = "medium"
+            except Exception:
+                pass
+        deadline_events.append({**ev, "urgency": urgency})
+
+    return {
+        "greeting": greeting,
+        "first_name": first_name,
+        "events": deadline_events,
+        "critical_count": len(critical),
+        "high_count": len(high),
+        "medium_count": len(medium),
+        "total_events": len(events),
+        "free_time_minutes": score_data["focus_time_available"],
+        "productivity_score": score_data["score"],
+        "recommendations": score_data["recommendations"][:2],
+    }
 
 
 # ─── Serve frontend in production ─────────────────────────────────────────────

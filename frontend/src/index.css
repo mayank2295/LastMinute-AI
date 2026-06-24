@@ -3,54 +3,74 @@
 @tailwind utilities;
 
 @layer base {
-  * { box-sizing: border-box; }
-
+  *, *::before, *::after { box-sizing: border-box; }
   html, body, #root {
     height: 100%;
-    margin: 0;
-    padding: 0;
-    background: #070711;
-    color: #e5e7eb;
-    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    margin: 0; padding: 0;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: #fff;
+    color: #111;
     -webkit-font-smoothing: antialiased;
   }
-
   ::-webkit-scrollbar { width: 4px; height: 4px; }
-  ::-webkit-scrollbar-track { background: #0e0e1f; }
-  ::-webkit-scrollbar-thumb { background: #1f1f42; border-radius: 2px; }
-  ::-webkit-scrollbar-thumb:hover { background: #2563eb; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 99px; }
 }
 
 @layer components {
-  .panel {
-    @apply bg-panel border border-border rounded-xl;
-  }
-
   .btn-primary {
-    @apply bg-blue hover:bg-blue-dim text-white font-semibold px-4 py-2 rounded-lg
-           transition-all duration-150 active:scale-95 shadow-glow-blue;
+    @apply inline-flex items-center justify-center gap-2 bg-primary text-white
+           rounded-lg px-4 py-2 text-sm font-medium cursor-pointer select-none
+           hover:bg-gray-800 active:scale-[0.98] transition-all duration-100;
   }
-
-  .btn-ghost {
-    @apply text-text-muted hover:text-white hover:bg-panel-light px-3 py-1.5
-           rounded-lg transition-all duration-150;
+  .btn-outline {
+    @apply inline-flex items-center justify-center gap-2 bg-white text-primary
+           border border-border rounded-lg px-4 py-2 text-sm font-medium cursor-pointer select-none
+           hover:bg-subtle active:scale-[0.98] transition-all duration-100;
   }
-
-  .urgency-critical { @apply text-red-alert border-red-alert/30 bg-red-alert/10; }
-  .urgency-high     { @apply text-orange-warn border-orange-warn/30 bg-orange-warn/10; }
-  .urgency-medium   { @apply text-yellow-note border-yellow-note/30 bg-yellow-note/10; }
-  .urgency-low      { @apply text-green-ok border-green-ok/30 bg-green-ok/10; }
+  .btn-accent {
+    @apply inline-flex items-center justify-center gap-2 bg-accent text-white
+           rounded-lg px-4 py-2 text-sm font-medium cursor-pointer select-none
+           hover:bg-accent-hover active:scale-[0.98] transition-all duration-100;
+  }
+  .card {
+    @apply bg-white border border-border rounded-xl;
+  }
+  .badge-red    { @apply inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full bg-red-50 text-red-700 border border-red-200; }
+  .badge-orange { @apply inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full bg-orange-50 text-orange-700 border border-orange-200; }
+  .badge-yellow { @apply inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full bg-yellow-50 text-yellow-700 border border-yellow-200; }
+  .badge-green  { @apply inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full bg-accent-light text-accent-text border border-accent-border; }
+  .badge-gray   { @apply inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 border border-gray-200; }
 }
 
-/* Typing cursor animation for streamed text */
-@keyframes blink { 0%,100% { opacity:1 } 50% { opacity:0 } }
+/* Typing cursor for streaming */
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
 .typing-cursor::after {
-  content: '▌';
-  animation: blink 1s step-start infinite;
-  color: #2563eb;
+  content: '▋';
+  display: inline-block;
+  margin-left: 2px;
+  animation: blink 0.8s step-start infinite;
+  color: #16a34a;
 }
 
-/* Gradient shine on cards */
-.card-shine {
-  background: linear-gradient(135deg, #0e0e1f 0%, #13132b 100%);
+/* Skeleton */
+@keyframes shimmer { from{background-position:-200% 0} to{background-position:200% 0} }
+.skeleton {
+  background: linear-gradient(90deg,#f3f4f6 25%,#e5e7eb 50%,#f3f4f6 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.6s linear infinite;
+  border-radius: 6px;
 }
+
+/* Dot loader */
+.dot-loader { display:inline-flex; gap:3px; align-items:center; }
+.dot-loader span {
+  width:5px; height:5px; background:#9ca3af; border-radius:50%;
+  animation: dot-pulse 1.4s ease-in-out infinite;
+}
+.dot-loader span:nth-child(2) { animation-delay:.2s; }
+.dot-loader span:nth-child(3) { animation-delay:.4s; }
+@keyframes dot-pulse { 0%,80%,100%{transform:scale(0.6)} 40%{transform:scale(1)} }
+
+/* Progress ring */
+@keyframes ring-fill { from{stroke-dashoffset:283} }
