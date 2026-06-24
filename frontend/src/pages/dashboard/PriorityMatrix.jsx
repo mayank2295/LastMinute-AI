@@ -1,88 +1,105 @@
-import { useState } from 'react'
+import { useMemo } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { getTasks, completeTask, moveTask } from '../../services/api'
+import { useNavigate } from 'react-router-dom'
+import { getTasks, completeTask, deleteTask } from '../../services/api'
 import { useAuth } from '../../context/AuthContext'
-import { CheckCircle2, Circle, Calendar } from 'lucide-react'
+import {
+  CheckCircle2, Circle, Timer, Trash2, Flame,
+  AlertTriangle, CalendarClock, ListChecks, ArrowRight,
+} from 'lucide-react'
 
-const QUADRANTS = [
-  { id: 'urgent_important', label: 'Do First',  sub: 'Urgent & Important',        border: 'border-red-200',    header: 'bg-red-50',    dot: 'bg-red-400',    text: 'text-red-700' },
-  { id: 'important',        label: 'Schedule',  sub: 'Not Urgent, Important',     border: 'border-blue-200',   header: 'bg-blue-50',   dot: 'bg-blue-400',   text: 'text-blue-700' },
-  { id: 'urgent',           label: 'Delegate',  sub: 'Urgent, Not Important',     border: 'border-orange-200', header: 'bg-orange-50', dot: 'bg-orange-400', text: 'text-orange-700' },
-  { id: 'neither',          label: 'Eliminate', sub: 'Not Urgent, Not Important', border: 'border-gray-200',   header: 'bg-gray-50',   dot: 'bg-gray-300',   text: 'text-gray-500' },
+/* ─── Time helpers ────────────────────────────────────────────────────────── */
+function hoursLeft(deadline) {
+  if (!deadline) return Infinity
+  const ms = new Date(deadline) - Date.now()
+  return ms / 3_600_000
+}
+
+function countdown(deadline) {
+  if (!deadline) return { text: 'No deadline', color: 'badge-gray' }
+  const h = hoursLeft(deadline)
+  if (h < 0)  return { text: `${Math.abs(Math.round(h))}h overdue`, color: 'badge-red' }
+  if (h < 1)  return { text: `${Math.max(1, Math.round(h * 60))}m left`, color: 'badge-red' }
+  if (h < 24) return { text: `${Math.floor(h)}h left`, color: 'badge-orange' }
+  if (h < 48) return { text: 'Tomorrow', color: 'badge-yellow' }
+  return { text: `${Math.ceil(h / 24)}d left`, color: 'badge-blue' }
+}
+
+function priorityBorder(p) {
+  return {
+    urgent_important: 'border-l-red-500',
+    urgent:           'border-l-orange-500',
+    important:        'border-l-blue-500',
+    neither:          'border-l-gray-300',
+  }[p] || 'border-l-gray-300'
+}
+
+function whyNow(task) {
+  const h = hoursLeft(task.deadline)
+  if (h < 0)  return 'Overdue — clear this immediately'
+  if (h < 2)  return 'Due within 2 hours — highest priority'
+  if (h < 24) return 'Due today — start before it becomes a crisis'
+  if (task.priority === 'urgent_important') return 'Critical & important — protect time for this'
+  if (h < 48) return 'Due tomorrow — get ahead now'
+  return 'On your radar — chip away when you have a gap'
+}
+
+/* ─── Buckets (time horizon) ──────────────────────────────────────────────── */
+const BUCKETS = [
+  { id: 'overdue',  label: 'Overdue',     icon: AlertTriangle, color: 'text-red-600',    test: h => h < 0 },
+  { id: 'today',    label: 'Due today',   icon: Flame,         color: 'text-orange-600', test: h => h >= 0 && h < 24 },
+  { id: 'tomorrow', label: 'Tomorrow',    icon: CalendarClock, color: 'text-yellow-600', test: h => h >= 24 && h < 48 },
+  { id: 'week',     label: 'This week',   icon: CalendarClock, color: 'text-blue-600',   test: h => h >= 48 && h < 168 },
+  { id: 'later',    label: 'Later / no deadline', icon: ListChecks, color: 'text-gray-500', test: h => h >= 168 },
 ]
 
-function TaskCard({ task, onDone, onDragStart }) {
+function bucketFor(task) {
+  const h = hoursLeft(task.deadline)
+  if (h === Infinity) return 'later'
+  return BUCKETS.find(b => b.test(h))?.id || 'later'
+}
+
+/* ─── Task row ────────────────────────────────────────────────────────────── */
+function TaskRow({ task, rank, onDone, onDelete, onFocus }) {
+  const cd = countdown(task.deadline)
   return (
-    <div
-      draggable
-      onDragStart={e => { e.dataTransfer.effectAllowed = 'move'; onDragStart(task.id) }}
-      className={`flex items-start gap-2 p-2.5 rounded-lg border border-border bg-white hover:border-gray-300 cursor-grab active:cursor-grabbing transition-colors group select-none ${task.completed ? 'opacity-40' : ''}`}
-    >
-      <button
-        onClick={e => { e.stopPropagation(); !task.completed && onDone(task.id) }}
-        className="flex-shrink-0 mt-0.5 hover:scale-110 transition-transform"
-      >
-        {task.completed
-          ? <CheckCircle2 className="w-4 h-4 text-accent" />
-          : <Circle className="w-4 h-4 text-gray-300 group-hover:text-gray-400" />
-        }
+    <div className={`flex items-center gap-3 bg-white border border-border border-l-4 ${priorityBorder(task.priority)} rounded-lg px-3 py-2.5 hover:shadow-sm transition-shadow group`}>
+      {rank != null && (
+        <span className="flex-shrink-0 w-6 h-6 rounded-full bg-subtle text-muted text-xs font-bold flex items-center justify-center">
+          {rank}
+        </span>
+      )}
+      <button onClick={() => onDone(task.id)} className="flex-shrink-0 hover:scale-110 transition-transform">
+        <Circle className="w-5 h-5 text-gray-300 hover:text-accent" />
       </button>
       <div className="flex-1 min-w-0">
-        <p className={`text-xs font-medium leading-snug ${task.completed ? 'line-through text-muted' : 'text-primary'}`}>
-          {task.title}
-        </p>
-        <div className="flex items-center gap-2 mt-0.5">
-          {task.deadline && (
-            <span className="text-[10px] text-muted flex items-center gap-1">
-              <Calendar className="w-2.5 h-2.5" />
-              {new Date(task.deadline).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
-            </span>
+        <p className="text-sm font-medium text-primary truncate">{task.title}</p>
+        <div className="flex items-center gap-2 mt-1 flex-wrap">
+          <span className={cd.color}>{cd.text}</span>
+          {task.estimated_minutes && (
+            <span className="badge-gray">{task.estimated_minutes >= 60 ? `${task.estimated_minutes / 60}h` : `${task.estimated_minutes}m`}</span>
           )}
         </div>
       </div>
-    </div>
-  )
-}
-
-function Quadrant({ q, tasks, onDone, onDragStart, onDrop }) {
-  const [over, setOver] = useState(false)
-
-  return (
-    <div
-      onDragOver={e => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; setOver(true) }}
-      onDragLeave={e => { if (!e.currentTarget.contains(e.relatedTarget)) setOver(false) }}
-      onDrop={e => { e.preventDefault(); onDrop(q.id); setOver(false) }}
-      className={`flex flex-col border rounded-xl overflow-hidden transition-all ${q.border} ${over ? 'ring-2 ring-offset-1 ring-accent/50 scale-[1.01]' : ''}`}
-    >
-      <div className={`${q.header} px-4 py-3 border-b ${q.border} flex-shrink-0`}>
-        <div className="flex items-center gap-2">
-          <span className={`w-2 h-2 rounded-full flex-shrink-0 ${q.dot}`} />
-          <span className={`text-xs font-bold ${q.text}`}>{q.label}</span>
-          <span className={`ml-auto text-xs font-medium ${q.text} opacity-70`}>{tasks.length}</span>
-        </div>
-        <p className="text-[10px] text-muted mt-0.5 ml-4">{q.sub}</p>
-      </div>
-
-      <div className="flex-1 overflow-y-auto p-3 space-y-1.5 min-h-[120px] bg-white">
-        {tasks.length === 0 ? (
-          <p className={`text-xs text-center py-4 transition-colors ${over ? 'text-accent font-medium' : 'text-muted italic'}`}>
-            {over ? 'Drop here' : 'No tasks — drop here or ask the AI'}
-          </p>
-        ) : (
-          tasks.map(t => (
-            <TaskCard key={t.id} task={t} onDone={onDone} onDragStart={onDragStart} />
-          ))
-        )}
+      <div className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+        <button onClick={() => onFocus(task)} title="Start focus session"
+          className="flex items-center gap-1 text-xs bg-primary text-white rounded-md px-2 py-1 hover:bg-gray-800 transition-colors">
+          <Timer className="w-3 h-3" /> Focus
+        </button>
+        <button onClick={() => onDelete(task.id)} title="Delete"
+          className="p-1.5 rounded-md text-gray-300 hover:text-red-400 hover:bg-red-50 transition-colors">
+          <Trash2 className="w-3.5 h-3.5" />
+        </button>
       </div>
     </div>
   )
 }
 
+/* ─── Page ────────────────────────────────────────────────────────────────── */
 export default function PriorityMatrix() {
   const { user } = useAuth()
   const qc = useQueryClient()
-  const [dragging, setDragging] = useState(null)
-
+  const navigate = useNavigate()
   const QKEY = ['tasks', user?.sessionId]
 
   const { data, isLoading } = useQuery({
@@ -94,87 +111,167 @@ export default function PriorityMatrix() {
 
   const doneMut = useMutation({
     mutationFn: id => completeTask(user.sessionId, id),
-    onSuccess: () => qc.invalidateQueries({ queryKey: QKEY }),
-  })
-
-  const moveMut = useMutation({
-    mutationFn: ({ taskId, priority }) => moveTask(user.sessionId, taskId, priority),
-    // Optimistic update — reflect the move instantly before the API responds
-    onMutate: async ({ taskId, priority }) => {
+    onMutate: async (id) => {
       await qc.cancelQueries({ queryKey: QKEY })
-      const snapshot = qc.getQueryData(QKEY)
-      qc.setQueryData(QKEY, old => {
-        if (!old) return old
-        // The query uses `select: d => d.tasks || []` so the cache stores raw tasks array
-        return old.map ? old.map(t => t.id === taskId ? { ...t, priority } : t)
-                       : { ...old, tasks: (old.tasks || []).map(t => t.id === taskId ? { ...t, priority } : t) }
-      })
-      return { snapshot }
+      const snap = qc.getQueryData(QKEY)
+      qc.setQueryData(QKEY, old => (old || []).map(t => t.id === id ? { ...t, completed: true } : t))
+      return { snap }
     },
-    onError: (_err, _vars, ctx) => {
-      if (ctx?.snapshot) qc.setQueryData(QKEY, ctx.snapshot)
-    },
+    onError: (_e, _v, ctx) => ctx?.snap && qc.setQueryData(QKEY, ctx.snap),
     onSettled: () => qc.invalidateQueries({ queryKey: QKEY }),
   })
 
-  const handleDrop = (quadrantId) => {
-    if (dragging) {
-      const task = (data || []).find(t => t.id === dragging)
-      if (task && task.priority !== quadrantId) {
-        moveMut.mutate({ taskId: dragging, priority: quadrantId })
-      }
-    }
-    setDragging(null)
-  }
+  const delMut = useMutation({
+    mutationFn: id => deleteTask(user.sessionId, id),
+    onMutate: async (id) => {
+      await qc.cancelQueries({ queryKey: QKEY })
+      const snap = qc.getQueryData(QKEY)
+      qc.setQueryData(QKEY, old => (old || []).filter(t => t.id !== id))
+      return { snap }
+    },
+    onError: (_e, _v, ctx) => ctx?.snap && qc.setQueryData(QKEY, ctx.snap),
+    onSettled: () => qc.invalidateQueries({ queryKey: QKEY }),
+  })
 
   const tasks = data || []
-  const total = tasks.length
-  const done  = tasks.filter(t => t.completed).length
 
-  const byQ = QUADRANTS.reduce((acc, q) => {
-    acc[q.id] = tasks.filter(t => t.priority === q.id)
-    return acc
-  }, {})
+  // Smart ranking: soonest deadline first; ties / no-deadline fall back to AI priority score.
+  const ranked = useMemo(() => {
+    return tasks
+      .filter(t => !t.completed)
+      .sort((a, b) => {
+        const ha = hoursLeft(a.deadline), hb = hoursLeft(b.deadline)
+        if (ha !== hb) return ha - hb
+        return (b.priority_score || 0) - (a.priority_score || 0)
+      })
+  }, [tasks])
+
+  const completed = tasks.filter(t => t.completed)
+  const top = ranked[0]
+
+  // Group ranked tasks (skip #1, it's the hero) into time buckets, preserving global rank
+  const grouped = useMemo(() => {
+    const g = {}
+    ranked.forEach((t, i) => {
+      const b = bucketFor(t)
+      ;(g[b] = g[b] || []).push({ task: t, rank: i + 1 })
+    })
+    return g
+  }, [ranked])
+
+  const onFocus = (task) => navigate('/dashboard/timer')
 
   if (isLoading) return (
-    <div className="p-6 grid grid-cols-2 gap-4">
-      {[1, 2, 3, 4].map(i => <div key={i} className="skeleton h-48 rounded-xl" />)}
+    <div className="p-6 space-y-3 max-w-3xl">
+      <div className="skeleton h-28 rounded-xl" />
+      {[1, 2, 3].map(i => <div key={i} className="skeleton h-16 rounded-lg" />)}
     </div>
   )
 
-  return (
-    <div className="p-4 lg:p-6 h-full flex flex-col gap-4">
-      <div className="flex items-center justify-between">
-        <p className="text-xs text-muted">
-          {total > 0
-            ? `${done}/${total} tasks complete · Drag cards between quadrants to reprioritize`
-            : 'No tasks yet — ask the AI to plan your day'}
+  if (ranked.length === 0 && completed.length === 0) {
+    return (
+      <div className="p-6 flex flex-col items-center justify-center h-full text-center">
+        <ListChecks className="w-12 h-12 text-gray-200 mb-3" />
+        <p className="text-base font-semibold text-primary mb-1">No tasks in your game plan yet</p>
+        <p className="text-sm text-muted mb-5 max-w-sm">
+          Use <b>Plan my day</b> or <b>Brain dump</b> on the Dashboard, or just tell the AI what you need to get done.
         </p>
-        {total > 0 && (
+        <button onClick={() => navigate('/dashboard')} className="btn-primary text-sm py-2 px-5">
+          Go to Dashboard <ArrowRight className="w-4 h-4" />
+        </button>
+      </div>
+    )
+  }
+
+  return (
+    <div className="p-4 lg:p-6 max-w-3xl mx-auto space-y-5">
+      {/* Header */}
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <div>
+          <h2 className="text-lg font-bold text-primary">Your game plan</h2>
+          <p className="text-sm text-muted">
+            {ranked.length} to do{ranked.length ? ` · ranked smartest-first by AI` : ''} · {completed.length} done
+          </p>
+        </div>
+        {(ranked.length + completed.length) > 0 && (
           <div className="flex items-center gap-2">
-            <div className="h-1.5 w-24 bg-gray-100 rounded-full overflow-hidden">
-              <div
-                className="h-full bg-accent rounded-full transition-all"
-                style={{ width: `${total ? (done / total) * 100 : 0}%` }}
-              />
+            <div className="h-1.5 w-28 bg-gray-100 rounded-full overflow-hidden">
+              <div className="h-full bg-accent rounded-full transition-all"
+                style={{ width: `${Math.round(completed.length / (ranked.length + completed.length) * 100)}%` }} />
             </div>
-            <span className="text-xs text-muted">{total ? Math.round((done / total) * 100) : 0}%</span>
+            <span className="text-xs text-muted">
+              {Math.round(completed.length / (ranked.length + completed.length) * 100)}%
+            </span>
           </div>
         )}
       </div>
 
-      <div className="flex-1 grid grid-cols-2 gap-4 min-h-0">
-        {QUADRANTS.map(q => (
-          <Quadrant
-            key={q.id}
-            q={q}
-            tasks={byQ[q.id] || []}
-            onDone={id => doneMut.mutate(id)}
-            onDragStart={id => setDragging(id)}
-            onDrop={handleDrop}
-          />
-        ))}
-      </div>
+      {/* START HERE hero */}
+      {top && (
+        <div className="rounded-xl border-2 border-accent bg-accent-light p-5">
+          <div className="flex items-center gap-2 mb-2">
+            <Flame className="w-4 h-4 text-accent" />
+            <span className="text-xs font-bold uppercase tracking-widest text-accent-text">Start here</span>
+          </div>
+          <p className="text-xl font-bold text-primary leading-snug">{top.title}</p>
+          <p className="text-sm text-accent-text mt-1">{whyNow(top)}</p>
+          <div className="flex items-center gap-2 mt-3 flex-wrap">
+            <span className={countdown(top.deadline).color}>{countdown(top.deadline).text}</span>
+            {top.estimated_minutes && (
+              <span className="badge-gray">~{top.estimated_minutes >= 60 ? `${top.estimated_minutes / 60}h` : `${top.estimated_minutes}m`}</span>
+            )}
+          </div>
+          <div className="flex items-center gap-2 mt-4">
+            <button onClick={() => onFocus(top)} className="btn-primary text-sm py-2 px-4">
+              <Timer className="w-4 h-4" /> Start focus session
+            </button>
+            <button onClick={() => doneMut.mutate(top.id)} className="btn-outline text-sm py-2 px-4">
+              <CheckCircle2 className="w-4 h-4" /> Mark done
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Time-bucketed queue */}
+      {BUCKETS.map(b => {
+        const items = (grouped[b.id] || []).filter(({ rank }) => rank !== 1) // hero already shown
+        if (!items.length) return null
+        return (
+          <div key={b.id}>
+            <div className="flex items-center gap-2 mb-2">
+              <b.icon className={`w-4 h-4 ${b.color}`} />
+              <span className={`text-xs font-bold uppercase tracking-widest ${b.color}`}>{b.label}</span>
+              <span className="text-xs text-muted">({items.length})</span>
+            </div>
+            <div className="space-y-2">
+              {items.map(({ task, rank }) => (
+                <TaskRow key={task.id} task={task} rank={rank}
+                  onDone={id => doneMut.mutate(id)}
+                  onDelete={id => delMut.mutate(id)}
+                  onFocus={onFocus} />
+              ))}
+            </div>
+          </div>
+        )
+      })}
+
+      {/* Completed (collapsed-ish) */}
+      {completed.length > 0 && (
+        <div>
+          <div className="flex items-center gap-2 mb-2">
+            <CheckCircle2 className="w-4 h-4 text-accent" />
+            <span className="text-xs font-bold uppercase tracking-widest text-accent-text">Completed ({completed.length})</span>
+          </div>
+          <div className="space-y-1.5">
+            {completed.slice(0, 8).map(t => (
+              <div key={t.id} className="flex items-center gap-3 px-3 py-2 rounded-lg bg-subtle opacity-60">
+                <CheckCircle2 className="w-4 h-4 text-accent flex-shrink-0" />
+                <span className="text-sm text-muted line-through truncate">{t.title}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

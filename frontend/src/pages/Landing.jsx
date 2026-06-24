@@ -35,7 +35,7 @@ function ProductPreview() {
           {[
             { n: 'Dashboard', active: true },
             { n: 'My Tasks' },
-            { n: 'Priority Matrix' },
+            { n: 'Game Plan' },
             { n: 'Focus Timer' },
           ].map(item => (
             <div

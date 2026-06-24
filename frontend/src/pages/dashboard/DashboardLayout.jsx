@@ -9,7 +9,7 @@ import { registerServiceWorker } from '../../services/notifications'
 
 const PAGE_TITLES = {
   '/dashboard':               'Dashboard',
-  '/dashboard/matrix':        'Priority Matrix',
+  '/dashboard/matrix':        'Game Plan',
   '/dashboard/timer':         'Focus Timer',
   '/dashboard/reminders':     'Reminders',
   '/dashboard/productivity':  'Productivity',

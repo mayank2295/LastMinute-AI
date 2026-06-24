@@ -19,7 +19,7 @@ const SECTIONS = [
   {
     label: 'FOCUS TOOLS',
     items: [
-      { to: '/dashboard/matrix',       icon: Grid2x2,     label: 'Priority Matrix' },
+      { to: '/dashboard/matrix',       icon: Grid2x2,     label: 'Game Plan' },
       { to: '/dashboard/timer',        icon: Timer,       label: 'Focus Timer' },
       { to: '/dashboard/reminders',    icon: Bell,        label: 'Reminders',      reminderCount: true },
       { to: '/dashboard/productivity', icon: TrendingUp,  label: 'Productivity' },
