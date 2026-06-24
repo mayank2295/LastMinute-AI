@@ -1,0 +1,56 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * { box-sizing: border-box; }
+
+  html, body, #root {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    background: #070711;
+    color: #e5e7eb;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  ::-webkit-scrollbar { width: 4px; height: 4px; }
+  ::-webkit-scrollbar-track { background: #0e0e1f; }
+  ::-webkit-scrollbar-thumb { background: #1f1f42; border-radius: 2px; }
+  ::-webkit-scrollbar-thumb:hover { background: #2563eb; }
+}
+
+@layer components {
+  .panel {
+    @apply bg-panel border border-border rounded-xl;
+  }
+
+  .btn-primary {
+    @apply bg-blue hover:bg-blue-dim text-white font-semibold px-4 py-2 rounded-lg
+           transition-all duration-150 active:scale-95 shadow-glow-blue;
+  }
+
+  .btn-ghost {
+    @apply text-text-muted hover:text-white hover:bg-panel-light px-3 py-1.5
+           rounded-lg transition-all duration-150;
+  }
+
+  .urgency-critical { @apply text-red-alert border-red-alert/30 bg-red-alert/10; }
+  .urgency-high     { @apply text-orange-warn border-orange-warn/30 bg-orange-warn/10; }
+  .urgency-medium   { @apply text-yellow-note border-yellow-note/30 bg-yellow-note/10; }
+  .urgency-low      { @apply text-green-ok border-green-ok/30 bg-green-ok/10; }
+}
+
+/* Typing cursor animation for streamed text */
+@keyframes blink { 0%,100% { opacity:1 } 50% { opacity:0 } }
+.typing-cursor::after {
+  content: '▌';
+  animation: blink 1s step-start infinite;
+  color: #2563eb;
+}
+
+/* Gradient shine on cards */
+.card-shine {
+  background: linear-gradient(135deg, #0e0e1f 0%, #13132b 100%);
+}
