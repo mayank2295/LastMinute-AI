@@ -4,6 +4,9 @@
 
 @layer base {
   *, *::before, *::after { box-sizing: border-box; }
+  html {
+    font-size: 16px;
+  }
   html, body, #root {
     height: 100%;
     margin: 0; padding: 0;
@@ -12,6 +15,7 @@
     color: #111;
     -webkit-font-smoothing: antialiased;
   }
+  body { font-size: 14px; line-height: 1.6; }
   ::-webkit-scrollbar { width: 4px; height: 4px; }
   ::-webkit-scrollbar-track { background: transparent; }
   ::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 99px; }
@@ -41,12 +45,45 @@
   .badge-yellow { @apply inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full bg-yellow-50 text-yellow-700 border border-yellow-200; }
   .badge-green  { @apply inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full bg-accent-light text-accent-text border border-accent-border; }
   .badge-gray   { @apply inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 border border-gray-200; }
+  .badge-blue   { @apply inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200; }
 }
+
+/* Status bar */
+.status-bar {
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 1.5rem;
+  font-size: 13px;
+  transition: all 0.3s ease;
+  border-bottom: 1px solid transparent;
+  flex-shrink: 0;
+}
+.status-bar.green  { background: #f0fdf4; border-color: #bbf7d0; }
+.status-bar.yellow { background: #fefce8; border-color: #fef08a; }
+.status-bar.orange { background: #fff7ed; border-color: #fed7aa; }
+.status-bar.red    { background: #fef2f2; border-color: #fecaca; }
+.status-bar.red.pulse { animation: pulse-border 2s infinite; }
+@keyframes pulse-border {
+  0%, 100% { border-color: #fecaca; }
+  50%       { border-color: #ef4444; }
+}
+.status-dot {
+  width: 8px; height: 8px; border-radius: 50%; margin-right: 10px; flex-shrink: 0;
+}
+.status-dot.green  { background: #16a34a; }
+.status-dot.yellow { background: #ca8a04; }
+.status-dot.orange { background: #f97316; }
+.status-dot.red    { background: #ef4444; animation: pulse-dot 1.5s infinite; }
+@keyframes pulse-dot { 0%,100%{opacity:1} 50%{opacity:0.4} }
+.status-text { font-weight: 500; margin-right: 8px; color: #111; }
+.status-sub  { color: #6b7280; }
 
 /* Typing cursor for streaming */
 @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
 .typing-cursor::after {
-  content: '▋';
+  content: 'X';
   display: inline-block;
   margin-left: 2px;
   animation: blink 0.8s step-start infinite;
@@ -74,3 +111,17 @@
 
 /* Progress ring */
 @keyframes ring-fill { from{stroke-dashoffset:283} }
+
+/* Modal overlay */
+.modal-overlay {
+  position: fixed; inset: 0; z-index: 50;
+  background: rgba(0,0,0,0.5);
+  display: flex; align-items: center; justify-content: center;
+  padding: 1rem;
+}
+.modal-box {
+  background: white; border-radius: 16px;
+  width: 100%; max-width: 520px;
+  max-height: 90vh; overflow-y: auto;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+}

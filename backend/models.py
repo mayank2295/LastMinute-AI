@@ -20,8 +20,30 @@ class Task(BaseModel):
     urgency_score: Optional[float] = None
     importance_score: Optional[float] = None
     effort_estimate: Optional[int] = None
+    estimated_minutes: Optional[int] = None
+    source: Optional[str] = "ai"
     completed: bool = False
     created_at: Optional[str] = None
+
+
+class CreateTaskRequest(BaseModel):
+    title: str
+    description: Optional[str] = None
+    deadline: Optional[str] = None
+    priority: Optional[str] = None
+    estimated_minutes: Optional[int] = None
+    source: Optional[str] = "manual"
+    add_to_calendar: Optional[bool] = False
+
+
+class UpdateTaskRequest(BaseModel):
+    priority: Optional[str] = None
+    quadrant: Optional[str] = None
+    title: Optional[str] = None
+    description: Optional[str] = None
+    deadline: Optional[str] = None
+    completed: Optional[bool] = None
+    estimated_minutes: Optional[int] = None
 
 
 class ChatRequest(BaseModel):
@@ -59,6 +81,13 @@ class SubscribeRequest(BaseModel):
     subscription: dict
     task_title: str
     deadline: str
+
+
+class FocusSessionRequest(BaseModel):
+    task_id: Optional[str] = None
+    task_title: Optional[str] = None
+    duration_minutes: int = 25
+    completed_at: Optional[str] = None
 
 
 class ProductivityScore(BaseModel):

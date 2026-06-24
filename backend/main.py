@@ -8,7 +8,7 @@ from typing import Optional
 
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse, RedirectResponse
+from fastapi.responses import StreamingResponse, RedirectResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from dotenv import load_dotenv
 
@@ -19,12 +19,16 @@ import calendar_service
 import gemini_agent
 import task_engine
 import notification_service
-from models import ChatRequest, CreateEventRequest, PrioritizeRequest, SubscribeRequest, MoveTaskRequest
+from models import (
+    ChatRequest, CreateEventRequest, PrioritizeRequest,
+    SubscribeRequest, MoveTaskRequest, CreateTaskRequest,
+    UpdateTaskRequest, FocusSessionRequest,
+)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    database.init_db()          # initialises Firebase Admin SDK
+    database.init_db()
     asyncio.create_task(notification_service.check_and_send_reminders())
     yield
 
@@ -51,7 +55,7 @@ async def health():
     return {"status": "ok", "timestamp": datetime.utcnow().isoformat()}
 
 
-# ─── Auth  (all under /api/auth/) ─────────────────────────────────────────────
+# ─── Auth ─────────────────────────────────────────────────────────────────────
 
 @app.get("/api/auth/login")
 async def login(session_id: Optional[str] = Query(default=None)):
@@ -63,11 +67,6 @@ async def login(session_id: Optional[str] = Query(default=None)):
 
 @app.get("/api/auth/callback/google")
 async def oauth_callback(code: str, state: str):
-    """
-    Google redirects here after the user grants permission.
-    We exchange the code, store tokens in Firestore, then redirect the browser
-    back to the React frontend with session_id + user info as query params.
-    """
     try:
         user_info = calendar_service.handle_oauth_callback(code, state)
         frontend = os.getenv("FRONTEND_URL", "http://localhost:5173")
@@ -88,9 +87,18 @@ async def auth_status(session_id: str):
     return {"authenticated": False}
 
 
+@app.get("/api/me")
+async def get_me(session_id: str = Query(...)):
+    session = database.get_session(session_id)
+    if not session:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    email = session.get("user_id", "")
+    name_guess = email.split("@")[0].replace(".", " ").replace("_", " ").title()
+    return {"session_id": session_id, "email": email, "name": name_guess}
+
+
 @app.get("/api/debug/session/{session_id}")
 async def debug_session(session_id: str):
-    """Diagnostic endpoint — shows token metadata (no secrets exposed)."""
     session = database.get_session(session_id)
     if not session:
         return {"error": "session not found", "session_id": session_id}
@@ -105,21 +113,6 @@ async def debug_session(session_id: str):
     }
 
 
-@app.get("/api/me")
-async def get_me(session_id: str = Query(...)):
-    session = database.get_session(session_id)
-    if not session:
-        raise HTTPException(status_code=401, detail="Not authenticated")
-    email = session.get("user_id", "")
-    name_guess = email.split("@")[0].replace(".", " ").replace("_", " ").title()
-    return {"session_id": session_id, "email": email, "name": name_guess}
-
-
-@app.get("/api/reminders/{session_id}")
-async def get_reminders(session_id: str):
-    return {"reminders": database.get_reminders(session_id)}
-
-
 # ─── Chat / Agent ─────────────────────────────────────────────────────────────
 
 @app.post("/api/chat")
@@ -129,7 +122,7 @@ async def chat(req: ChatRequest):
             async for chunk in gemini_agent.chat_with_agent(req.message, req.session_id):
                 yield f"data: {json.dumps({'chunk': chunk})}\n\n"
         except Exception as e:
-            yield f"data: {json.dumps({'chunk': f'⚠️ Server error: {str(e)[:100]}'})}\n\n"
+            yield f"data: {json.dumps({'chunk': f'Server error: {str(e)[:100]}'})}\n\n"
         yield "data: [DONE]\n\n"
 
     return StreamingResponse(stream(), media_type="text/event-stream")
@@ -191,12 +184,61 @@ async def get_tasks(session_id: str):
     return {"tasks": database.get_tasks(session_id)}
 
 
-@app.post("/api/tasks/{session_id}/prioritize")
-async def prioritize(session_id: str, body: PrioritizeRequest):
-    prioritized = task_engine.prioritize_tasks(body.tasks)
-    for t in prioritized:
-        database.save_task(session_id, t)
-    return {"tasks": prioritized}
+@app.post("/api/tasks/{session_id}")
+async def create_task(session_id: str, body: CreateTaskRequest):
+    if not body.title or not body.title.strip():
+        raise HTTPException(status_code=400, detail="Title is required")
+    session = database.get_session(session_id)
+    if not session:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+
+    # Auto-assign priority based on deadline if not provided
+    priority = body.priority
+    if not priority:
+        from task_engine import calculate_urgency_score, classify_eisenhower
+        urgency = calculate_urgency_score(body.deadline or "")
+        priority = classify_eisenhower(urgency, 5.0)
+
+    task_data = {
+        "title": body.title.strip(),
+        "description": body.description or "",
+        "deadline": body.deadline or "",
+        "priority": priority,
+        "quadrant": priority,
+        "estimated_minutes": body.estimated_minutes,
+        "source": body.source or "manual",
+        "completed": False,
+        "created_at": datetime.utcnow().isoformat(),
+    }
+    saved = database.save_task(session_id, task_data)
+
+    # Optionally add to Google Calendar
+    if body.add_to_calendar and body.deadline:
+        try:
+            from datetime import timedelta
+            import dateutil.parser
+            start = dateutil.parser.parse(body.deadline)
+            end = start + timedelta(hours=1)
+            calendar_service.create_calendar_event(
+                session_id=session_id,
+                title=body.title,
+                start_time=start.isoformat(),
+                end_time=end.isoformat(),
+                description=body.description or "",
+                reminder_minutes=30,
+            )
+        except Exception:
+            pass  # Calendar creation is best-effort
+
+    return saved
+
+
+@app.delete("/api/tasks/{session_id}/{task_id}")
+async def delete_task(session_id: str, task_id: str):
+    deleted = database.delete_task(task_id, session_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Task not found")
+    return {"success": True}
 
 
 @app.patch("/api/tasks/{session_id}/{task_id}/complete")
@@ -211,6 +253,48 @@ async def move_task(session_id: str, task_id: str, body: MoveTaskRequest):
     return {"success": True}
 
 
+@app.put("/api/tasks/{session_id}/{task_id}")
+async def update_task(session_id: str, task_id: str, body: UpdateTaskRequest):
+    updates = body.model_dump(exclude_none=True)
+    updated = database.update_task(task_id, session_id, updates)
+    if not updated:
+        raise HTTPException(status_code=404, detail="Task not found")
+    return updated
+
+
+@app.post("/api/tasks/{session_id}/prioritize")
+async def prioritize(session_id: str, body: PrioritizeRequest):
+    prioritized = task_engine.prioritize_tasks(body.tasks)
+    for t in prioritized:
+        database.save_task(session_id, t)
+    return {"tasks": prioritized}
+
+
+# ─── Focus Sessions ───────────────────────────────────────────────────────────
+
+@app.post("/api/focus-sessions/{session_id}")
+async def save_focus_session(session_id: str, body: FocusSessionRequest):
+    session = database.get_session(session_id)
+    if not session:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    record = database.save_focus_session(session_id, body.model_dump())
+    return record
+
+
+@app.get("/api/focus-sessions/{session_id}")
+async def get_focus_sessions(
+    session_id: str,
+    date: Optional[str] = Query(default=None),
+):
+    sessions = database.get_focus_sessions(session_id, date=date)
+    total_minutes = sum(s.get("duration_minutes", 0) for s in sessions)
+    return {
+        "sessions": sessions,
+        "total_minutes": total_minutes,
+        "count": len(sessions),
+    }
+
+
 # ─── Productivity ─────────────────────────────────────────────────────────────
 
 @app.get("/api/productivity/{session_id}")
@@ -221,6 +305,13 @@ async def get_productivity(session_id: str):
     except Exception:
         events = []
     return task_engine.calculate_productivity_score(events, tasks)
+
+
+# ─── Reminders ────────────────────────────────────────────────────────────────
+
+@app.get("/api/reminders/{session_id}")
+async def get_reminders(session_id: str):
+    return {"reminders": database.get_reminders(session_id)}
 
 
 # ─── Notifications ────────────────────────────────────────────────────────────
@@ -241,19 +332,14 @@ async def subscribe(session_id: str, body: SubscribeRequest):
     return {"success": True}
 
 
-# ─── Mission Brief ───────────────────────────────────────────────────────────
+# ─── Mission Brief ────────────────────────────────────────────────────────────
 
 @app.get("/api/briefing/{session_id}")
 async def get_briefing(session_id: str):
-    """
-    Returns a structured AI briefing for the Mission Brief screen.
-    Called once after login to give users a personalised overview.
-    """
     session = database.get_session(session_id)
     if not session:
         return {"error": "Not authenticated"}
 
-    # Get first-name from email
     email = session.get("user_id", "")
     first_name = email.split("@")[0].replace(".", " ").replace("_", " ").title()
     hour = datetime.now().hour
@@ -265,8 +351,6 @@ async def get_briefing(session_id: str):
         events = []
 
     tasks = database.get_tasks(session_id)
-
-    # Classify events by urgency
     now = datetime.now(timezone.utc)
     critical, high, medium = [], [], []
     for ev in events:
@@ -278,9 +362,7 @@ async def get_briefing(session_id: str):
             if not dt.tzinfo:
                 dt = dt.replace(tzinfo=timezone.utc)
             h = (dt - now).total_seconds() / 3600
-            if h < 0:
-                pass
-            elif h < 4:
+            if h < 4:
                 critical.append(ev)
             elif h < 24:
                 high.append(ev)
@@ -290,8 +372,6 @@ async def get_briefing(session_id: str):
             pass
 
     score_data = task_engine.calculate_productivity_score(events, tasks)
-
-    # Build urgency-sorted deadline list (top 5)
     deadline_events = []
     for ev in events[:5]:
         s = ev.get("start_time", "")
@@ -329,10 +409,6 @@ async def get_briefing(session_id: str):
 
 
 # ─── Serve frontend in production ─────────────────────────────────────────────
-# React Router requires the server to return index.html for all non-API routes.
-# We do explicit catch-all routes BEFORE the static mount so FastAPI routes win.
-
-from fastapi.responses import FileResponse
 
 _static_dir = os.path.join(os.path.dirname(__file__), "static")
 
@@ -342,7 +418,6 @@ def _spa_index():
 
 
 if os.path.exists(_static_dir):
-    # SPA catch-all routes — must be registered before the static mount
     @app.get("/login")
     async def serve_login(): return _spa_index()
 
@@ -352,5 +427,4 @@ if os.path.exists(_static_dir):
     @app.get("/dashboard/{rest_of_path:path}")
     async def serve_dashboard_sub(rest_of_path: str): return _spa_index()
 
-    # Serve static assets (JS/CSS/images) — this must come last
     app.mount("/", StaticFiles(directory=_static_dir, html=True), name="static")

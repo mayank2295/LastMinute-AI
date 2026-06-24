@@ -1,11 +1,9 @@
 """
 Firestore persistence layer.
-All function signatures are kept identical to the original SQLite version
-so that calendar_service, gemini_agent, notification_service, and main.py
-require zero changes in how they call this module.
 """
 
 import os
+import uuid
 from datetime import datetime, timezone
 from typing import Optional, List
 
@@ -15,13 +13,11 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# ─── Initialise Firebase Admin SDK once ───────────────────────────────────────
 
 def _init_firebase():
     if firebase_admin._apps:
         return
     raw_key = os.getenv("FIREBASE_PRIVATE_KEY", "")
-    # .env stores \n as literal backslash-n — convert to real newlines
     private_key = raw_key.replace("\\n", "\n")
     cred = credentials.Certificate({
         "type": "service_account",
@@ -31,11 +27,9 @@ def _init_firebase():
         "token_uri": "https://oauth2.googleapis.com/token",
     })
     firebase_admin.initialize_app(cred)
-    print("[Firebase] Initialised Firestore for project:", os.getenv("FIREBASE_PROJECT_ID"))
 
 
 def init_db():
-    """Called from main.py lifespan — initialises Firebase."""
     _init_firebase()
 
 
@@ -45,7 +39,6 @@ def _db() -> firestore.client:
 
 
 # ─── Sessions ─────────────────────────────────────────────────────────────────
-# Collection: sessions/{session_id}
 
 def save_session(session_id: str, user_id: str, access_token: str,
                  refresh_token: str, token_expiry: str):
@@ -75,9 +68,6 @@ def get_session(session_id: str) -> Optional[dict]:
 
 
 # ─── Conversations ─────────────────────────────────────────────────────────────
-# Collection: conversations/{session_id}
-# Messages stored as an ordered array inside the document.
-# Max doc size is 1 MB; 20 messages of ~500 chars each ≈ 10 KB — well within limits.
 
 def save_message(session_id: str, role: str, content: str):
     db = _db()
@@ -95,21 +85,15 @@ def get_conversation_history(session_id: str, limit: int = 20) -> List[dict]:
     if not doc.exists:
         return []
     messages = doc.to_dict().get("messages", [])
-    # Sort by timestamp ascending, return last `limit` messages
     messages.sort(key=lambda m: m.get("timestamp", ""))
     return messages[-limit:]
 
 
 # ─── Tasks ────────────────────────────────────────────────────────────────────
-# Collection: tasks/{task_id}
 
-def save_task(session_id: str, task: dict):
+def save_task(session_id: str, task: dict) -> dict:
     db = _db()
-    task_id = task.get("id")
-    if not task_id:
-        import uuid
-        task_id = str(uuid.uuid4())
-
+    task_id = task.get("id") or str(uuid.uuid4())
     data = {
         "id": task_id,
         "session_id": session_id,
@@ -117,13 +101,17 @@ def save_task(session_id: str, task: dict):
         "description": task.get("description", ""),
         "deadline": task.get("deadline", ""),
         "priority": task.get("priority", ""),
+        "quadrant": task.get("quadrant", task.get("priority", "")),
         "urgency_score": task.get("urgency_score"),
         "importance_score": task.get("importance_score"),
         "effort_estimate": task.get("effort_estimate"),
+        "estimated_minutes": task.get("estimated_minutes", task.get("effort_estimate")),
+        "source": task.get("source", "ai"),
         "completed": bool(task.get("completed", False)),
         "created_at": task.get("created_at", datetime.utcnow().isoformat()),
     }
     db.collection("tasks").document(task_id).set(data, merge=True)
+    return data
 
 
 def get_tasks(session_id: str) -> List[dict]:
@@ -143,7 +131,34 @@ def complete_task(task_id: str, session_id: str):
     doc_ref = db.collection("tasks").document(task_id)
     doc = doc_ref.get()
     if doc.exists and doc.to_dict().get("session_id") == session_id:
-        doc_ref.update({"completed": True})
+        doc_ref.update({
+            "completed": True,
+            "completed_at": datetime.utcnow().isoformat(),
+        })
+
+
+def delete_task(task_id: str, session_id: str) -> bool:
+    db = _db()
+    doc_ref = db.collection("tasks").document(task_id)
+    doc = doc_ref.get()
+    if doc.exists and doc.to_dict().get("session_id") == session_id:
+        doc_ref.delete()
+        return True
+    return False
+
+
+def update_task(task_id: str, session_id: str, updates: dict) -> Optional[dict]:
+    db = _db()
+    doc_ref = db.collection("tasks").document(task_id)
+    doc = doc_ref.get()
+    if not doc.exists or doc.to_dict().get("session_id") != session_id:
+        return None
+    allowed = {"priority", "quadrant", "title", "description", "deadline",
+               "completed", "estimated_minutes", "source"}
+    clean = {k: v for k, v in updates.items() if k in allowed}
+    if clean:
+        doc_ref.update(clean)
+    return {**doc.to_dict(), **clean}
 
 
 def move_task(task_id: str, session_id: str, new_priority: str):
@@ -151,15 +166,13 @@ def move_task(task_id: str, session_id: str, new_priority: str):
     doc_ref = db.collection("tasks").document(task_id)
     doc = doc_ref.get()
     if doc.exists and doc.to_dict().get("session_id") == session_id:
-        doc_ref.update({"priority": new_priority})
+        doc_ref.update({"priority": new_priority, "quadrant": new_priority})
 
 
 # ─── Reminders ────────────────────────────────────────────────────────────────
-# Collection: reminders/{auto_id}
 
 def save_reminder(session_id: str, task_title: str, deadline: str, push_subscription: str):
-    db = _db()
-    db.collection("reminders").add({
+    _db().collection("reminders").add({
         "session_id": session_id,
         "task_title": task_title,
         "deadline": deadline,
@@ -181,19 +194,17 @@ def get_pending_reminders() -> List[dict]:
     result = []
     for doc in docs:
         data = doc.to_dict()
-        data["id"] = doc.id      # Firestore doc ID (string)
+        data["id"] = doc.id
         result.append(data)
     return result
 
 
 def update_reminder_sent(reminder_id: str, reminder_type: str):
-    """reminder_id is the Firestore document ID string."""
     col = f"reminder_{reminder_type}_sent"
     _db().collection("reminders").document(reminder_id).update({col: True})
 
 
 def get_reminders(session_id: str) -> List[dict]:
-    """Returns all reminders for a session, newest first."""
     docs = (
         _db()
         .collection("reminders")
@@ -206,4 +217,41 @@ def get_reminders(session_id: str) -> List[dict]:
         data["id"] = doc.id
         result.append(data)
     result.sort(key=lambda r: r.get("created_at", ""), reverse=True)
+    return result
+
+
+# ─── Focus Sessions ───────────────────────────────────────────────────────────
+
+def save_focus_session(session_id: str, data: dict) -> dict:
+    db = _db()
+    doc_id = str(uuid.uuid4())
+    record = {
+        "id": doc_id,
+        "session_id": session_id,
+        "task_id": data.get("task_id", ""),
+        "task_title": data.get("task_title", ""),
+        "duration_minutes": int(data.get("duration_minutes", 25)),
+        "completed_at": data.get("completed_at", datetime.utcnow().isoformat()),
+        "created_at": datetime.utcnow().isoformat(),
+    }
+    db.collection("focus_sessions").document(doc_id).set(record)
+    return record
+
+
+def get_focus_sessions(session_id: str, date: Optional[str] = None) -> List[dict]:
+    docs = (
+        _db()
+        .collection("focus_sessions")
+        .where("session_id", "==", session_id)
+        .stream()
+    )
+    result = []
+    for doc in docs:
+        data = doc.to_dict()
+        if date:
+            completed = data.get("completed_at", "")
+            if not completed.startswith(date):
+                continue
+        result.append(data)
+    result.sort(key=lambda r: r.get("completed_at", ""), reverse=True)
     return result

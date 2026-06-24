@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useQueryClient, useQuery } from '@tanstack/react-query'
 import { useAuth } from '../../context/AuthContext'
 import DeadlineList from '../../components/DeadlineList'
@@ -27,26 +27,24 @@ function MorningBrief({ sessionId, onDismiss }) {
       <div className="w-8 h-8 rounded-lg bg-accent-light flex items-center justify-center flex-shrink-0">
         <Zap className="w-4 h-4 text-accent" />
       </div>
-
       <div className="flex-1 min-w-0">
-        <p className="text-xs font-semibold text-primary">
+        <p className="text-sm font-semibold text-primary">
           {greeting}, {first_name}!
         </p>
         <div className="flex items-center gap-3 mt-0.5 flex-wrap">
-          <span className="text-[11px] text-muted">{total_events || 0} events in the next 3 days</span>
+          <span className="text-xs text-muted">{total_events || 0} events in the next 3 days</span>
           {urgentCount > 0 && (
-            <span className="inline-flex items-center gap-1 text-[11px] text-orange-600 font-medium">
+            <span className="inline-flex items-center gap-1 text-xs text-orange-600 font-medium">
               <AlertTriangle className="w-3 h-3" />
               {urgentCount} urgent
             </span>
           )}
-          <span className={`inline-flex items-center gap-1 text-[11px] font-medium ${scoreColor}`}>
+          <span className={`inline-flex items-center gap-1 text-xs font-medium ${scoreColor}`}>
             <Clock className="w-3 h-3" />
             Score {productivity_score}/100
           </span>
         </div>
       </div>
-
       <button
         onClick={onDismiss}
         className="flex-shrink-0 text-gray-300 hover:text-gray-500 transition-colors"
@@ -64,7 +62,6 @@ export default function Home() {
   const { user } = useAuth()
   const qc = useQueryClient()
 
-  // Show brief once per day
   const today = new Date().toDateString()
   const [showBrief, setShowBrief] = useState(
     () => localStorage.getItem(BRIEF_DISMISSED_KEY) !== today
@@ -83,18 +80,14 @@ export default function Home() {
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
-      {/* Morning Brief banner — shown once per day, dismissable */}
       {showBrief && user && (
         <MorningBrief sessionId={user.sessionId} onDismiss={dismissBrief} />
       )}
 
       <div className="flex flex-1 overflow-hidden">
-        {/* Left column — deadlines */}
         <div className="hidden lg:flex flex-col w-[260px] xl:w-[280px] border-r border-border flex-shrink-0 bg-white overflow-hidden">
           <DeadlineList />
         </div>
-
-        {/* Right column — chat */}
         <div className="flex-1 overflow-hidden">
           <ChatAgent onTasksUpdated={handleTasksUpdated} />
         </div>

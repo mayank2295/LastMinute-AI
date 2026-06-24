@@ -1,14 +1,10 @@
-// All backend API calls
-
-const BASE = ''   // Vite proxy handles /api → http://localhost:8000
-
 async function req(method, path, body) {
   const opts = {
     method,
     headers: { 'Content-Type': 'application/json' },
     ...(body ? { body: JSON.stringify(body) } : {}),
   }
-  const resp = await fetch(BASE + path, opts)
+  const resp = await fetch(path, opts)
   if (!resp.ok) {
     const err = await resp.json().catch(() => ({ detail: resp.statusText }))
     const e = new Error(err.detail || 'Request failed')
@@ -19,13 +15,11 @@ async function req(method, path, body) {
 }
 
 // ─── Auth ─────────────────────────────────────────────────────────────────────
-
-export const getAuthUrl  = ()           => req('GET', '/api/auth/login')
-export const getAuthStatus = (sid)      => req('GET', `/api/auth/status/${sid}`)
-export const getMe         = (sid)      => req('GET', `/api/me?session_id=${sid}`)
+export const getAuthUrl    = ()      => req('GET', '/api/auth/login')
+export const getAuthStatus = (sid)   => req('GET', `/api/auth/status/${sid}`)
+export const getMe         = (sid)   => req('GET', `/api/me?session_id=${sid}`)
 
 // ─── Chat ─────────────────────────────────────────────────────────────────────
-
 export async function streamChat(message, sessionId, onChunk, onToolCalls, onDone) {
   const resp = await fetch('/api/chat', {
     method: 'POST',
@@ -64,36 +58,31 @@ export async function streamChat(message, sessionId, onChunk, onToolCalls, onDon
 }
 
 // ─── Mission Brief ────────────────────────────────────────────────────────────
-
 export const getBriefing = (sid) => req('GET', `/api/briefing/${sid}`)
 
 // ─── Calendar ─────────────────────────────────────────────────────────────────
-
-export const getCalendarEvents = (sid, days = 7) =>
-  req('GET', `/api/calendar/events/${sid}?days=${days}`)
-
-export const createCalendarEvent = (sid, event) =>
-  req('POST', `/api/calendar/events/${sid}`, event)
-
-export const getCalendarGaps = (sid, date, mins = 60) =>
-  req('GET', `/api/calendar/gaps/${sid}?date=${date}&duration_minutes=${mins}`)
+export const getCalendarEvents  = (sid, days = 7) => req('GET', `/api/calendar/events/${sid}?days=${days}`)
+export const createCalendarEvent = (sid, event)   => req('POST', `/api/calendar/events/${sid}`, event)
+export const getCalendarGaps    = (sid, date, mins = 60) => req('GET', `/api/calendar/gaps/${sid}?date=${date}&duration_minutes=${mins}`)
 
 // ─── Tasks ────────────────────────────────────────────────────────────────────
+export const getTasks        = (sid)                   => req('GET',    `/api/tasks/${sid}`)
+export const createTask      = (sid, task)             => req('POST',   `/api/tasks/${sid}`, task)
+export const deleteTask      = (sid, taskId)           => req('DELETE', `/api/tasks/${sid}/${taskId}`)
+export const completeTask    = (sid, taskId)           => req('PATCH',  `/api/tasks/${sid}/${taskId}/complete`)
+export const moveTask        = (sid, taskId, priority) => req('PATCH',  `/api/tasks/${sid}/${taskId}/move`, { priority })
+export const updateTask      = (sid, taskId, updates)  => req('PUT',    `/api/tasks/${sid}/${taskId}`, updates)
+export const prioritizeTasks = (sid, tasks)            => req('POST',   `/api/tasks/${sid}/prioritize`, { tasks })
 
-export const getTasks       = (sid)           => req('GET',   `/api/tasks/${sid}`)
-export const prioritizeTasks = (sid, tasks)   => req('POST',  `/api/tasks/${sid}/prioritize`, { tasks })
-export const completeTask   = (sid, taskId)   => req('PATCH', `/api/tasks/${sid}/${taskId}/complete`)
-export const moveTask       = (sid, taskId, priority) => req('PATCH', `/api/tasks/${sid}/${taskId}/move`, { priority })
+// ─── Focus Sessions ───────────────────────────────────────────────────────────
+export const saveFocusSession = (sid, data)          => req('POST', `/api/focus-sessions/${sid}`, data)
+export const getFocusSessions = (sid, date = null)   => req('GET',  `/api/focus-sessions/${sid}${date ? `?date=${date}` : ''}`)
 
 // ─── Productivity ─────────────────────────────────────────────────────────────
-
 export const getProductivity = (sid) => req('GET', `/api/productivity/${sid}`)
 
-// ─── Notifications / Reminders ────────────────────────────────────────────────
-
-export const getVapidKey  = ()               => req('GET', '/api/notifications/vapid-key')
-export const subscribeNotification = (sid, sub, title, deadline) =>
-  req('POST', `/api/notifications/subscribe/${sid}`, {
-    subscription: sub, task_title: title, deadline,
-  })
+// ─── Reminders ────────────────────────────────────────────────────────────────
 export const getReminders = (sid) => req('GET', `/api/reminders/${sid}`)
+export const getVapidKey  = ()    => req('GET', '/api/notifications/vapid-key')
+export const subscribeNotification = (sid, sub, title, deadline) =>
+  req('POST', `/api/notifications/subscribe/${sid}`, { subscription: sub, task_title: title, deadline })
