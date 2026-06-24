@@ -41,7 +41,8 @@ def _db() -> firestore.client:
 # ─── Sessions ─────────────────────────────────────────────────────────────────
 
 def save_session(session_id: str, user_id: str, access_token: str,
-                 refresh_token: str, token_expiry: str):
+                 refresh_token: str, token_expiry: str,
+                 name: Optional[str] = None, timezone_name: Optional[str] = None):
     now = datetime.utcnow().isoformat()
     doc_ref = _db().collection("sessions").document(session_id)
     existing = doc_ref.get()
@@ -53,6 +54,12 @@ def save_session(session_id: str, user_id: str, access_token: str,
         "token_expiry": token_expiry,
         "updated_at": now,
     }
+    # Only persist name/timezone when explicitly provided, so a token refresh
+    # never wipes the values captured at login.
+    if name is not None:
+        data["name"] = name
+    if timezone_name is not None:
+        data["timezone"] = timezone_name
     if existing.exists:
         doc_ref.update(data)
     else:
@@ -65,6 +72,21 @@ def get_session(session_id: str) -> Optional[dict]:
     if doc.exists:
         return doc.to_dict()
     return None
+
+
+def get_user_timezone(session_id: str) -> str:
+    session = get_session(session_id)
+    if session and session.get("timezone"):
+        return session["timezone"]
+    return "UTC"
+
+
+def save_push_subscription(session_id: str, subscription: str):
+    """Store the browser push subscription on the session so the agent can
+    set reminders without the LLM needing to know the subscription."""
+    doc_ref = _db().collection("sessions").document(session_id)
+    if doc_ref.get().exists:
+        doc_ref.update({"push_subscription": subscription})
 
 
 # ─── Conversations ─────────────────────────────────────────────────────────────

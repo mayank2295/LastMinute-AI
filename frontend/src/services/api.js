@@ -18,6 +18,11 @@ async function req(method, path, body) {
 export const getAuthUrl    = ()      => req('GET', '/api/auth/login')
 export const getAuthStatus = (sid)   => req('GET', `/api/auth/status/${sid}`)
 export const getMe         = (sid)   => req('GET', `/api/me?session_id=${sid}`)
+export const startDemo     = ()      => req('POST', '/api/demo/start')
+
+// ─── Agentic ──────────────────────────────────────────────────────────────────
+export const planMyDay = (sid)        => req('POST', `/api/plan/${sid}`)
+export const brainDump = (sid, text)  => req('POST', `/api/braindump/${sid}`, { text })
 
 // ─── Chat ─────────────────────────────────────────────────────────────────────
 export async function streamChat(message, sessionId, onChunk, onToolCalls, onDone) {

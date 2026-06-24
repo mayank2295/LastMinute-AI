@@ -6,7 +6,7 @@ from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from typing import Optional
 
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, HTTPException, Query, Header
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse, RedirectResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
@@ -19,11 +19,15 @@ import calendar_service
 import gemini_agent
 import task_engine
 import notification_service
+import demo_data
 from models import (
     ChatRequest, CreateEventRequest, PrioritizeRequest,
     SubscribeRequest, MoveTaskRequest, CreateTaskRequest,
     UpdateTaskRequest, FocusSessionRequest,
+    BrainDumpRequest, PushSubscribeRequest,
 )
+
+CRON_SECRET = os.getenv("CRON_SECRET", "")
 
 
 @asynccontextmanager
@@ -93,8 +97,23 @@ async def get_me(session_id: str = Query(...)):
     if not session:
         raise HTTPException(status_code=401, detail="Not authenticated")
     email = session.get("user_id", "")
-    name_guess = email.split("@")[0].replace(".", " ").replace("_", " ").title()
-    return {"session_id": session_id, "email": email, "name": name_guess}
+    # Prefer the real Google profile name captured at login; fall back to email.
+    name = session.get("name") or email.split("@")[0].replace(".", " ").replace("_", " ").title()
+    return {"session_id": session_id, "email": email, "name": name}
+
+
+# ─── Demo Mode (no login — lets judges try the app instantly) ──────────────────
+
+@app.post("/api/demo/start")
+async def demo_start():
+    """Seed a demo session and return its credentials. No Google login needed."""
+    demo_data.seed_demo_tasks()
+    return {
+        "session_id": demo_data.DEMO_SESSION_ID,
+        "email": demo_data.DEMO_EMAIL,
+        "name": demo_data.DEMO_NAME,
+        "demo": True,
+    }
 
 
 @app.get("/api/debug/session/{session_id}")
@@ -133,10 +152,63 @@ async def get_conversations(session_id: str):
     return {"messages": database.get_conversation_history(session_id)}
 
 
+# ─── Agentic: Plan My Day + Brain Dump ────────────────────────────────────────
+
+@app.post("/api/plan/{session_id}")
+async def plan_my_day(session_id: str):
+    """Proactively analyse the day and auto-schedule focus time."""
+    if not demo_data.is_demo(session_id) and not database.get_session(session_id):
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    # Demo sessions can't write to a real calendar, so skip auto-scheduling there.
+    auto = not demo_data.is_demo(session_id)
+    plan = await gemini_agent.generate_daily_plan(session_id, auto_schedule=auto)
+    return plan
+
+
+@app.post("/api/braindump/{session_id}")
+async def brain_dump(session_id: str, body: BrainDumpRequest):
+    """Turn a chaotic free-text dump into structured, prioritised tasks."""
+    if not body.text or not body.text.strip():
+        raise HTTPException(status_code=400, detail="Text is required")
+    if not demo_data.is_demo(session_id) and not database.get_session(session_id):
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    return await gemini_agent.parse_braindump(session_id, body.text.strip())
+
+
+@app.post("/api/notifications/push-subscribe/{session_id}")
+async def push_subscribe(session_id: str, body: PushSubscribeRequest):
+    """Store the browser push subscription on the session."""
+    database.save_push_subscription(session_id, json.dumps(body.subscription))
+    return {"success": True}
+
+
+# ─── Cron endpoints (driven by Google Cloud Scheduler) ────────────────────────
+
+def _verify_cron(token: Optional[str]):
+    if CRON_SECRET and token != CRON_SECRET:
+        raise HTTPException(status_code=403, detail="Forbidden")
+
+
+@app.post("/api/cron/check-reminders")
+async def cron_check_reminders(x_cron_secret: Optional[str] = Header(default=None)):
+    """Reliable reminder check — survives Cloud Run scale-to-zero."""
+    _verify_cron(x_cron_secret)
+    return notification_service.run_reminder_check()
+
+
+@app.post("/api/cron/daily-plan/{session_id}")
+async def cron_daily_plan(session_id: str, x_cron_secret: Optional[str] = Header(default=None)):
+    """Generate a daily plan for a user autonomously (scheduled, e.g. 7 AM)."""
+    _verify_cron(x_cron_secret)
+    return await gemini_agent.generate_daily_plan(session_id, auto_schedule=True)
+
+
 # ─── Calendar ─────────────────────────────────────────────────────────────────
 
 @app.get("/api/calendar/events/{session_id}")
 async def get_events(session_id: str, days: int = Query(default=7)):
+    if demo_data.is_demo(session_id):
+        return {"events": demo_data.demo_events()}
     try:
         events = calendar_service.get_upcoming_events(session_id, days=days)
         return {"events": events}
@@ -300,10 +372,13 @@ async def get_focus_sessions(
 @app.get("/api/productivity/{session_id}")
 async def get_productivity(session_id: str):
     tasks = database.get_tasks(session_id)
-    try:
-        events = calendar_service.get_upcoming_events(session_id, days=1)
-    except Exception:
-        events = []
+    if demo_data.is_demo(session_id):
+        events = demo_data.demo_events()
+    else:
+        try:
+            events = calendar_service.get_upcoming_events(session_id, days=1)
+        except Exception:
+            events = []
     return task_engine.calculate_productivity_score(events, tasks)
 
 
@@ -336,19 +411,28 @@ async def subscribe(session_id: str, body: SubscribeRequest):
 
 @app.get("/api/briefing/{session_id}")
 async def get_briefing(session_id: str):
+    is_demo = demo_data.is_demo(session_id)
     session = database.get_session(session_id)
-    if not session:
+    if not session and not is_demo:
         return {"error": "Not authenticated"}
 
-    email = session.get("user_id", "")
-    first_name = email.split("@")[0].replace(".", " ").replace("_", " ").title()
+    if is_demo:
+        first_name = demo_data.DEMO_NAME.split()[0]
+    else:
+        email = session.get("user_id", "")
+        full_name = session.get("name", "")
+        first_name = (full_name.split()[0] if full_name
+                      else email.split("@")[0].replace(".", " ").replace("_", " ").title().split()[0])
     hour = datetime.now().hour
     greeting = "Good morning" if hour < 12 else "Good afternoon" if hour < 18 else "Good evening"
 
-    try:
-        events = calendar_service.get_upcoming_events(session_id, days=3)
-    except Exception:
-        events = []
+    if is_demo:
+        events = demo_data.demo_events()
+    else:
+        try:
+            events = calendar_service.get_upcoming_events(session_id, days=3)
+        except Exception:
+            events = []
 
     tasks = database.get_tasks(session_id)
     now = datetime.now(timezone.utc)

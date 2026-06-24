@@ -61,18 +61,32 @@ def handle_oauth_callback(code: str, session_id: str) -> dict:
     service = build("oauth2", "v2", credentials=creds)
     user_info = service.userinfo().get().execute()
 
+    # Capture the user's real Google Calendar timezone so every event we create
+    # lands at the correct local time (not hardcoded UTC).
+    user_tz = "UTC"
+    try:
+        cal_service = build("calendar", "v3", credentials=creds)
+        primary = cal_service.calendarList().get(calendarId="primary").execute()
+        user_tz = primary.get("timeZone", "UTC")
+        print(f"[OAuth] Detected calendar timezone: {user_tz}")
+    except Exception as tz_err:
+        print(f"[OAuth] Could not detect timezone, defaulting to UTC: {tz_err}")
+
     database.save_session(
         session_id=session_id,
         user_id=user_info.get("email", ""),
         access_token=creds.token,
         refresh_token=creds.refresh_token or "",
         token_expiry=creds.expiry.isoformat() if creds.expiry else "",
+        name=user_info.get("name", ""),
+        timezone_name=user_tz,
     )
 
     print(f"[OAuth] Session saved for {user_info.get('email')} with session_id={session_id[:8]}...")
     return {
         "email": user_info.get("email", ""),
         "name": user_info.get("name", ""),
+        "timezone": user_tz,
     }
 
 
@@ -215,11 +229,16 @@ def create_calendar_event(
 
     service = build("calendar", "v3", credentials=creds)
 
+    # Use the user's real calendar timezone. If the agent supplied a naive
+    # local time (no offset), Google interprets it in this timezone — so a
+    # "3 PM" request lands at 3 PM local, not 3 PM UTC.
+    user_tz = database.get_user_timezone(session_id)
+
     body = {
         "summary": title,
         "description": description,
-        "start": {"dateTime": start_time, "timeZone": "UTC"},
-        "end":   {"dateTime": end_time,   "timeZone": "UTC"},
+        "start": {"dateTime": start_time, "timeZone": user_tz},
+        "end":   {"dateTime": end_time,   "timeZone": user_tz},
         "reminders": {
             "useDefault": False,
             "overrides": [

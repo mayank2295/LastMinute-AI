@@ -11,7 +11,7 @@ foreach ($line in (Get-Content $ENV_FILE)) {
 }
 
 # Build env-vars string — PORT is reserved by Cloud Run, do NOT include it
-$envVars = @(
+$envList = @(
     "GOOGLE_CLIENT_ID=$($cfg['GOOGLE_CLIENT_ID'])",
     "GOOGLE_CLIENT_SECRET=$($cfg['GOOGLE_CLIENT_SECRET'])",
     "GOOGLE_REDIRECT_URI=https://lastminute-ai-ummt2blwla-el.a.run.app/api/auth/callback/google",
@@ -24,7 +24,11 @@ $envVars = @(
     "FRONTEND_URL=https://lastminute-ai-ummt2blwla-el.a.run.app",
     "OAUTHLIB_RELAX_TOKEN_SCOPE=1",
     "ANTHROPIC_API_KEY=$($cfg['ANTHROPIC_API_KEY'])"
-) -join ","
+)
+# Optional: Gemini key (boosts Google-tech usage) and cron secret — only if set in .env
+if ($cfg['GEMINI_API_KEY']) { $envList += "GEMINI_API_KEY=$($cfg['GEMINI_API_KEY'])" }
+if ($cfg['CRON_SECRET'])    { $envList += "CRON_SECRET=$($cfg['CRON_SECRET'])" }
+$envVars = $envList -join ","
 
 Write-Host "Deploying to Cloud Run..."
 Push-Location "$PSScriptRoot\backend"

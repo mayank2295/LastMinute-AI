@@ -90,6 +90,14 @@ class FocusSessionRequest(BaseModel):
     completed_at: Optional[str] = None
 
 
+class BrainDumpRequest(BaseModel):
+    text: str
+
+
+class PushSubscribeRequest(BaseModel):
+    subscription: dict
+
+
 class ProductivityScore(BaseModel):
     score: int
     analysis: str
