@@ -15,7 +15,7 @@
     color: #111;
     -webkit-font-smoothing: antialiased;
   }
-  body { font-size: 14px; line-height: 1.6; }
+  body { font-size: 15px; line-height: 1.6; }
   ::-webkit-scrollbar { width: 4px; height: 4px; }
   ::-webkit-scrollbar-track { background: transparent; }
   ::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 99px; }

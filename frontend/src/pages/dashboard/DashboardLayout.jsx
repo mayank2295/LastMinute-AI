@@ -94,7 +94,7 @@ export default function DashboardLayout() {
   return (
     <div className="h-screen flex overflow-hidden bg-surface">
       {/* Sidebar — desktop */}
-      <div className="hidden md:flex">
+      <div className="hidden md:flex flex-shrink-0">
         <Sidebar />
       </div>
 
@@ -111,21 +111,21 @@ export default function DashboardLayout() {
       {/* Main area */}
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Top bar */}
-        <header className="h-[48px] flex-shrink-0 flex items-center justify-between px-4 bg-white border-b border-border">
+        <header className="h-[56px] flex-shrink-0 flex items-center justify-between px-5 bg-white border-b border-border">
           <div className="flex items-center gap-3">
             <button className="md:hidden p-1.5 rounded-lg hover:bg-subtle" onClick={() => setSidebarOpen(true)}>
-              <Menu className="w-4 h-4 text-muted" />
+              <Menu className="w-5 h-5 text-muted" />
             </button>
-            <h1 className="font-semibold text-sm text-primary">{title}</h1>
+            <h1 className="font-bold text-base text-primary">{title}</h1>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
             {score != null && (
-              <span className={`inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full border ${scoreColor}`}>
-                <TrendingUp className="w-3 h-3" />
+              <span className={`inline-flex items-center gap-1.5 text-sm font-medium px-3 py-1.5 rounded-full border ${scoreColor}`}>
+                <TrendingUp className="w-3.5 h-3.5" />
                 Score {score}/100
               </span>
             )}
-            <div className="w-7 h-7 rounded-full bg-accent-light border border-accent-border flex items-center justify-center text-xs font-bold text-accent-text">
+            <div className="w-8 h-8 rounded-full bg-accent-light border border-accent-border flex items-center justify-center text-sm font-bold text-accent-text">
               {user?.name?.[0]?.toUpperCase() || 'U'}
             </div>
           </div>

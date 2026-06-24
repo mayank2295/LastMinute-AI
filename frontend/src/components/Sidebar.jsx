@@ -28,7 +28,7 @@ const SECTIONS = [
 ]
 
 function NavItem({ item, taskCount, reminderCount }) {
-  const base = 'flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-colors group'
+  const base = 'flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-colors group'
   const active   = 'bg-accent-light text-accent-text font-medium'
   const inactive = 'text-gray-500 hover:bg-subtle hover:text-primary'
 
@@ -38,7 +38,7 @@ function NavItem({ item, taskCount, reminderCount }) {
       end={item.to === '/dashboard'}
       className={({ isActive }) => `${base} ${isActive ? active : inactive}`}
     >
-      <item.icon className="w-4 h-4 flex-shrink-0" />
+      <item.icon className="w-4.5 h-4.5 flex-shrink-0" style={{ width: 18, height: 18 }} />
       <span className="flex-1 truncate">{item.label}</span>
       {item.badgeGreen && (
         <span className="flex items-center gap-1 text-[10px] font-semibold text-accent bg-accent-light border border-accent-border rounded-full px-1.5 py-0.5">
@@ -86,20 +86,20 @@ export default function Sidebar({ onClose }) {
   const initial = user?.name?.[0]?.toUpperCase() || user?.email?.[0]?.toUpperCase() || 'U'
 
   return (
-    <aside className="w-[220px] h-full flex flex-col bg-white border-r border-border flex-shrink-0">
+    <aside className="w-[240px] h-full flex flex-col bg-white border-r border-border flex-shrink-0">
       {/* Logo */}
-      <div className="h-[48px] flex items-center gap-2.5 px-4 border-b border-border flex-shrink-0">
-        <div className="w-6 h-6 bg-primary rounded-md flex items-center justify-center">
-          <Zap className="w-3.5 h-3.5 text-white" />
+      <div className="h-[56px] flex items-center gap-3 px-5 border-b border-border flex-shrink-0">
+        <div className="w-7 h-7 bg-primary rounded-lg flex items-center justify-center">
+          <Zap className="w-4 h-4 text-white" />
         </div>
-        <span className="font-semibold text-sm text-primary">LastMinute AI</span>
+        <span className="font-bold text-base text-primary tracking-tight">LastMinute AI</span>
       </div>
 
       {/* Nav */}
-      <nav className="flex-1 overflow-y-auto py-3 px-2 space-y-4">
+      <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-5">
         {SECTIONS.map(section => (
           <div key={section.label}>
-            <p className="px-3 mb-1.5 text-[10px] font-semibold uppercase tracking-widest text-gray-400">
+            <p className="px-3 mb-2 text-xs font-bold uppercase tracking-widest text-gray-400">
               {section.label}
             </p>
             <div className="space-y-0.5">
@@ -118,16 +118,16 @@ export default function Sidebar({ onClose }) {
 
       {/* User info */}
       <div className="border-t border-border p-3">
-        <div className="flex items-center gap-2.5 p-2 rounded-lg hover:bg-subtle transition-colors">
-          <div className="w-7 h-7 rounded-full bg-accent-light border border-accent-border flex items-center justify-center text-xs font-bold text-accent-text flex-shrink-0">
+        <div className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-subtle transition-colors">
+          <div className="w-8 h-8 rounded-full bg-accent-light border border-accent-border flex items-center justify-center text-sm font-bold text-accent-text flex-shrink-0">
             {initial}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-xs font-medium text-primary truncate">{user?.name || 'User'}</p>
-            <p className="text-[10px] text-muted truncate">{user?.email}</p>
+            <p className="text-sm font-medium text-primary truncate">{user?.name || 'User'}</p>
+            <p className="text-xs text-muted truncate">{user?.email}</p>
           </div>
           <button onClick={handleLogout} title="Sign out" className="text-gray-400 hover:text-red-500 transition-colors">
-            <LogOut className="w-3.5 h-3.5" />
+            <LogOut className="w-4 h-4" />
           </button>
         </div>
       </div>

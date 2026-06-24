@@ -14,14 +14,14 @@ foreach ($line in (Get-Content $ENV_FILE)) {
 $envVars = @(
     "GOOGLE_CLIENT_ID=$($cfg['GOOGLE_CLIENT_ID'])",
     "GOOGLE_CLIENT_SECRET=$($cfg['GOOGLE_CLIENT_SECRET'])",
-    "GOOGLE_REDIRECT_URI=https://lastminute-ai-214061471378.asia-south1.run.app/api/auth/callback/google",
+    "GOOGLE_REDIRECT_URI=https://lastminute-ai-ummt2blwla-el.a.run.app/api/auth/callback/google",
     "FIREBASE_PROJECT_ID=$($cfg['FIREBASE_PROJECT_ID'])",
     "FIREBASE_CLIENT_EMAIL=$($cfg['FIREBASE_CLIENT_EMAIL'])",
     "VAPID_PUBLIC_KEY=$($cfg['VAPID_PUBLIC_KEY'])",
     "VAPID_PRIVATE_KEY=$($cfg['VAPID_PRIVATE_KEY'])",
     "VAPID_CLAIMS_EMAIL=$($cfg['VAPID_CLAIMS_EMAIL'])",
     "SECRET_KEY=$($cfg['SECRET_KEY'])",
-    "FRONTEND_URL=https://lastminute-ai-214061471378.asia-south1.run.app",
+    "FRONTEND_URL=https://lastminute-ai-ummt2blwla-el.a.run.app",
     "OAUTHLIB_RELAX_TOKEN_SCOPE=1",
     "ANTHROPIC_API_KEY=$($cfg['ANTHROPIC_API_KEY'])"
 ) -join ","
