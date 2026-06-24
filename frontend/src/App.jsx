@@ -42,7 +42,8 @@ export default function App() {
       <AuthProvider>
         <BrowserRouter>
           <Routes>
-            <Route path="/" element={<PublicRoute><Landing /></PublicRoute>} />
+            {/* Landing is always viewable — even when logged in (no redirect) */}
+            <Route path="/" element={<Landing />} />
             <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
             <Route path="/dashboard" element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>}>
               <Route index    element={<Home />} />

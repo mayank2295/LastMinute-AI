@@ -116,7 +116,7 @@ function ProductPreview() {
 }
 
 /* ─── Navbar ──────────────────────────────────────────────────────────────── */
-function Navbar({ onStart, onTour }) {
+function Navbar({ onStart, onTour, user, onDashboard }) {
   return (
     <nav className="w-full flex items-center justify-between px-6 py-4">
       <div className="flex items-center gap-2.5">
@@ -136,14 +136,23 @@ function Navbar({ onStart, onTour }) {
           <Compass className="w-4 h-4" /> Tour
         </button>
         <ThemeToggle className="!border-white/20 !text-gray-300" />
-        <Link to="/login"
-          className="px-4 py-2 text-sm text-gray-300 border border-white/20 rounded-lg hover:bg-white/5 transition-colors">
-          Sign in
-        </Link>
-        <button onClick={onStart}
-          className="px-4 py-2 text-sm bg-green-500 text-black rounded-lg font-semibold hover:bg-green-400 transition-colors">
-          Get started
-        </button>
+        {user ? (
+          <button onClick={onDashboard}
+            className="flex items-center gap-1.5 px-4 py-2 text-sm bg-green-500 text-black rounded-lg font-semibold hover:bg-green-400 transition-colors">
+            Go to Dashboard <ArrowRight className="w-4 h-4" />
+          </button>
+        ) : (
+          <>
+            <Link to="/login"
+              className="px-4 py-2 text-sm text-gray-300 border border-white/20 rounded-lg hover:bg-white/5 transition-colors">
+              Sign in
+            </Link>
+            <button onClick={onStart}
+              className="px-4 py-2 text-sm bg-green-500 text-black rounded-lg font-semibold hover:bg-green-400 transition-colors">
+              Get started
+            </button>
+          </>
+        )}
       </div>
     </nav>
   )
@@ -154,9 +163,13 @@ export default function Landing() {
   const [loading, setLoading] = useState(false)
   const [demoLoading, setDemoLoading] = useState(false)
   const navigate = useNavigate()
-  const { login } = useAuth()
+  const { login, user } = useAuth()
+
+  const goDashboard = () => navigate('/dashboard')
 
   const handleStart = async () => {
+    // Already logged in? Just go to the dashboard.
+    if (user) { goDashboard(); return }
     setLoading(true)
     try {
       const resp = await fetch('/api/auth/login')
@@ -168,6 +181,7 @@ export default function Landing() {
   }
 
   const handleDemo = async () => {
+    if (user) { goDashboard(); return }
     setDemoLoading(true)
     try {
       const d = await startDemo()
@@ -195,7 +209,7 @@ export default function Landing() {
         <div className="absolute inset-0 pointer-events-none"
           style={{ background: 'radial-gradient(ellipse 60% 40% at 50% 20%, rgba(22,163,74,0.10) 0%, transparent 70%)' }} />
 
-        <Navbar onStart={handleStart} onTour={() => setRunTour(true)} />
+        <Navbar onStart={handleStart} onTour={() => setRunTour(true)} user={user} onDashboard={goDashboard} />
 
         <section className="relative z-10 max-w-5xl mx-auto px-6 pt-16 pb-6 text-center">
           {/* Badge */}

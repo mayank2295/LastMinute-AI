@@ -87,13 +87,17 @@ export default function Sidebar({ onClose }) {
 
   return (
     <aside className="w-[240px] h-full flex flex-col bg-white border-r border-border flex-shrink-0">
-      {/* Logo */}
-      <div className="h-[56px] flex items-center gap-3 px-5 border-b border-border flex-shrink-0">
+      {/* Logo — click to return to the landing page (stays logged in) */}
+      <NavLink
+        to="/"
+        title="Back to home"
+        className="h-[56px] flex items-center gap-3 px-5 border-b border-border flex-shrink-0 hover:bg-subtle transition-colors"
+      >
         <div className="w-7 h-7 bg-primary rounded-lg flex items-center justify-center">
           <Zap className="w-4 h-4 text-white" />
         </div>
         <span className="font-bold text-base text-primary tracking-tight">LastMinute AI</span>
-      </div>
+      </NavLink>
 
       {/* Nav */}
       <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-5">
