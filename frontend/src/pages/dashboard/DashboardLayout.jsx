@@ -2,10 +2,27 @@ import { useEffect, useState, useCallback } from 'react'
 import { Outlet, useLocation } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import Sidebar from '../../components/Sidebar'
-import { Menu, TrendingUp } from 'lucide-react'
+import ThemeToggle from '../../components/ThemeToggle'
+import Tour from '../../components/Tour'
+import { Menu, TrendingUp, HelpCircle } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { getProductivity, getCalendarEvents } from '../../services/api'
 import { registerServiceWorker } from '../../services/notifications'
+
+const DASHBOARD_TOUR = [
+  { title: 'Welcome to LastMinute AI',
+    body: "Your AI co-pilot for beating deadlines. Quick 30-second tour — you can skip anytime." },
+  { selector: '[data-tour="sidebar"]', title: 'Your toolkit',
+    body: 'Calendar, tasks, Game Plan, Focus Timer, reminders and productivity — all in one place.' },
+  { selector: '[data-tour="plan"]', title: 'Plan my day (the magic)',
+    body: 'One click and the AI reads your calendar, writes your plan, and auto-blocks focus time on your real Google Calendar.' },
+  { selector: '[data-tour="braindump"]', title: 'Brain dump',
+    body: 'Type everything on your mind — the AI extracts tasks, infers deadlines, and prioritises them instantly.' },
+  { selector: '[data-tour="chat"]', title: 'Talk to your agent',
+    body: 'Ask it anything: "schedule my report tomorrow at 3 PM" and it actually does it.' },
+  { selector: '[data-tour="score"]', title: 'Your productivity score',
+    body: 'A live score from your completion rate, focus sessions, and calendar load. Aim for 70+.' },
+]
 
 const PAGE_TITLES = {
   '/dashboard':               'Dashboard',
@@ -73,10 +90,24 @@ export default function DashboardLayout() {
   const { user } = useAuth()
   const location = useLocation()
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [runTour, setRunTour] = useState(false)
 
   useEffect(() => {
     registerServiceWorker()
   }, [])
+
+  // Auto-start the tour on the user's first visit to the dashboard home.
+  useEffect(() => {
+    if (location.pathname === '/dashboard' && !localStorage.getItem('lm_tour_done')) {
+      const t = setTimeout(() => setRunTour(true), 800)
+      return () => clearTimeout(t)
+    }
+  }, [location.pathname])
+
+  const endTour = () => {
+    localStorage.setItem('lm_tour_done', '1')
+    setRunTour(false)
+  }
 
   const { data: prodData } = useQuery({
     queryKey: ['productivity', user?.sessionId],
@@ -94,7 +125,7 @@ export default function DashboardLayout() {
   return (
     <div className="h-screen flex overflow-hidden bg-surface">
       {/* Sidebar — desktop */}
-      <div className="hidden md:flex flex-shrink-0">
+      <div className="hidden md:flex flex-shrink-0" data-tour="sidebar">
         <Sidebar />
       </div>
 
@@ -118,13 +149,21 @@ export default function DashboardLayout() {
             </button>
             <h1 className="font-bold text-base text-primary">{title}</h1>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2.5">
             {score != null && (
-              <span className={`inline-flex items-center gap-1.5 text-sm font-medium px-3 py-1.5 rounded-full border ${scoreColor}`}>
+              <span data-tour="score" className={`inline-flex items-center gap-1.5 text-sm font-medium px-3 py-1.5 rounded-full border ${scoreColor}`}>
                 <TrendingUp className="w-3.5 h-3.5" />
                 Score {score}/100
               </span>
             )}
+            <button
+              onClick={() => setRunTour(true)}
+              className="theme-toggle"
+              title="Take a tour"
+            >
+              <HelpCircle className="w-4 h-4" />
+            </button>
+            <ThemeToggle />
             <div className="w-8 h-8 rounded-full bg-accent-light border border-accent-border flex items-center justify-center text-sm font-bold text-accent-text">
               {user?.name?.[0]?.toUpperCase() || 'U'}
             </div>
@@ -139,6 +178,9 @@ export default function DashboardLayout() {
           <Outlet />
         </main>
       </div>
+
+      {/* Guided product tour */}
+      <Tour steps={DASHBOARD_TOUR} run={runTour} onClose={endTour} />
     </div>
   )
 }

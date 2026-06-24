@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
+import { motion } from 'framer-motion'
 import { useQueryClient, useQuery } from '@tanstack/react-query'
 import { useAuth } from '../../context/AuthContext'
 import DeadlineList from '../../components/DeadlineList'
@@ -14,9 +15,11 @@ function PlanMyDay({ sessionId, isDemo, onTasksUpdated }) {
   const [loading, setLoading] = useState(false)
   const [plan, setPlan]       = useState(null)
   const [err, setErr]         = useState('')
+  const [auto, setAuto]       = useState(false)
+  const ranRef = useRef(false)
 
-  const run = async () => {
-    setLoading(true); setErr(''); setPlan(null)
+  const run = async (isAuto = false) => {
+    setLoading(true); setErr(''); setPlan(null); setAuto(isAuto)
     try {
       const p = await planMyDay(sessionId)
       setPlan(p)
@@ -28,8 +31,19 @@ function PlanMyDay({ sessionId, isDemo, onTasksUpdated }) {
     }
   }
 
+  // AUTOMATION: proactively plan the day once per day, no click needed.
+  useEffect(() => {
+    if (!sessionId || ranRef.current) return
+    const key = `lm_autoplan_${sessionId}_${new Date().toDateString()}`
+    if (localStorage.getItem(key)) return
+    ranRef.current = true
+    localStorage.setItem(key, '1')
+    const t = setTimeout(() => run(true), 1200)
+    return () => clearTimeout(t)
+  }, [sessionId])
+
   return (
-    <div className="bg-white border border-border rounded-xl p-4">
+    <div className="bg-white border border-border rounded-xl p-4" data-tour="plan">
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div className="flex items-center gap-2.5">
           <div className="w-8 h-8 rounded-lg bg-accent-light flex items-center justify-center flex-shrink-0">
@@ -40,16 +54,27 @@ function PlanMyDay({ sessionId, isDemo, onTasksUpdated }) {
             <p className="text-xs text-muted">AI reads your calendar &amp; auto-blocks focus time</p>
           </div>
         </div>
-        <button onClick={run} disabled={loading} className="btn-primary text-sm py-2 px-4 disabled:opacity-60">
+        <button onClick={() => run(false)} disabled={loading} className="btn-primary text-sm py-2 px-4 disabled:opacity-60">
           {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4" />}
           {loading ? 'Planning…' : 'Plan my day'}
         </button>
       </div>
 
+      {loading && auto && (
+        <p className="text-xs text-accent mt-3 flex items-center gap-1.5">
+          <Loader2 className="w-3 h-3 animate-spin" /> Auto-planning your day…
+        </p>
+      )}
       {err && <p className="text-xs text-red-500 mt-3">{err}</p>}
 
       {plan && (
-        <div className="mt-4 space-y-3">
+        <motion.div
+          initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}
+          className="mt-4 space-y-3"
+        >
+          {auto && (
+            <span className="badge-green text-xs">⚡ Auto-generated for you today</span>
+          )}
           <div className="bg-accent-light border border-accent-border rounded-lg p-3">
             <p className="text-sm text-accent-text leading-relaxed whitespace-pre-wrap">{plan.brief}</p>
           </div>
@@ -79,7 +104,7 @@ function PlanMyDay({ sessionId, isDemo, onTasksUpdated }) {
             <span className="badge-green">{plan.provider === 'gemini' ? 'Powered by Gemini' : 'AI'}</span>
             {plan.events_today} event(s) · {plan.open_tasks} open task(s)
           </p>
-        </div>
+        </motion.div>
       )}
     </div>
   )
@@ -247,6 +272,7 @@ export default function Home() {
 
           <button
             onClick={() => setShowDump(true)}
+            data-tour="braindump"
             className="btn-outline text-sm py-2.5 justify-center"
           >
             <Brain className="w-4 h-4" /> Brain dump
@@ -258,7 +284,7 @@ export default function Home() {
         </div>
 
         {/* Right — chat agent */}
-        <div className="flex-1 overflow-hidden">
+        <div className="flex-1 overflow-hidden" data-tour="chat">
           <ChatAgent onTasksUpdated={handleTasksUpdated} />
         </div>
       </div>

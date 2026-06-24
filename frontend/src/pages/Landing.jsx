@@ -1,12 +1,28 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { motion } from 'framer-motion'
 import {
   Calendar, Bot, Grid, Bell, TrendingUp,
   ChevronRight, Check, Zap, AlertTriangle, Clock,
-  ArrowRight, Shield, Cpu, GitBranch, PlayCircle
+  ArrowRight, Shield, Cpu, GitBranch, PlayCircle, Compass
 } from 'lucide-react'
 import { startDemo } from '../services/api'
 import { useAuth } from '../context/AuthContext'
+import ThemeToggle from '../components/ThemeToggle'
+import Tour from '../components/Tour'
+
+const LANDING_TOUR = [
+  { title: 'Welcome to LastMinute AI 👋',
+    body: "30-second tour of what makes this different. You can skip anytime." },
+  { selector: '[data-tour="cta"]', title: 'In a deadline panic?',
+    body: 'Hit this and the AI instantly reads your calendar and builds your rescue plan.' },
+  { selector: '[data-tour="demo"]', title: 'Just exploring?',
+    body: 'Try the full live demo with sample data — no Google login needed.' },
+  { selector: '[data-tour="features"]', title: 'Real, working features',
+    body: 'Live calendar sync, an agent that takes actions, auto-scheduling, and escalating reminders.' },
+  { title: "That's it!",
+    body: 'Click "Try live demo" to jump in, or sign in with Google for the full experience.' },
+]
 
 /* ─── Inline product preview ──────────────────────────────────────────────── */
 function ProductPreview() {
@@ -100,7 +116,7 @@ function ProductPreview() {
 }
 
 /* ─── Navbar ──────────────────────────────────────────────────────────────── */
-function Navbar({ onStart }) {
+function Navbar({ onStart, onTour }) {
   return (
     <nav className="w-full flex items-center justify-between px-6 py-4">
       <div className="flex items-center gap-2.5">
@@ -115,6 +131,11 @@ function Navbar({ onStart }) {
         <a href="#why"      className="hover:text-white transition-colors">Why us</a>
       </div>
       <div className="flex items-center gap-2">
+        <button onClick={onTour}
+          className="hidden sm:flex items-center gap-1.5 px-3 py-2 text-sm text-gray-300 hover:text-white transition-colors">
+          <Compass className="w-4 h-4" /> Tour
+        </button>
+        <ThemeToggle className="!border-white/20 !text-gray-300" />
         <Link to="/login"
           className="px-4 py-2 text-sm text-gray-300 border border-white/20 rounded-lg hover:bg-white/5 transition-colors">
           Sign in
@@ -157,6 +178,15 @@ export default function Landing() {
     }
   }
 
+  const [runTour, setRunTour] = useState(false)
+  useEffect(() => {
+    if (!localStorage.getItem('lm_landing_tour_done')) {
+      const t = setTimeout(() => setRunTour(true), 1000)
+      return () => clearTimeout(t)
+    }
+  }, [])
+  const endTour = () => { localStorage.setItem('lm_landing_tour_done', '1'); setRunTour(false) }
+
   return (
     <div className="min-h-screen flex flex-col">
 
@@ -165,47 +195,59 @@ export default function Landing() {
         <div className="absolute inset-0 pointer-events-none"
           style={{ background: 'radial-gradient(ellipse 60% 40% at 50% 20%, rgba(22,163,74,0.10) 0%, transparent 70%)' }} />
 
-        <Navbar onStart={handleStart} />
+        <Navbar onStart={handleStart} onTour={() => setRunTour(true)} />
 
         <section className="relative z-10 max-w-5xl mx-auto px-6 pt-16 pb-6 text-center">
           {/* Badge */}
-          <div className="inline-flex items-center gap-2 bg-white/5 border border-white/15 text-green-400 rounded-full px-4 py-2 text-xs font-medium mb-8">
+          <motion.div
+            initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}
+            className="inline-flex items-center gap-2 bg-white/5 border border-white/15 text-green-400 rounded-full px-4 py-2 text-xs font-medium mb-8">
             <span className="w-1.5 h-1.5 rounded-full bg-green-400" style={{ animation: 'pulse 1.5s infinite' }} />
             Live · Claude AI + Google Calendar + Cloud Run
-          </div>
+          </motion.div>
 
           {/* H1 */}
-          <h1 className="font-extrabold text-white leading-[1.05] tracking-tight mb-6"
+          <motion.h1
+            initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.55, delay: 0.08 }}
+            className="font-extrabold text-white leading-[1.05] tracking-tight mb-6"
             style={{ fontSize: 'clamp(44px, 7vw, 76px)' }}>
             Stop panicking.<br />
             <span className="text-green-400">Start executing.</span>
-          </h1>
+          </motion.h1>
 
-          <p className="text-gray-400 leading-relaxed mb-10 max-w-2xl mx-auto" style={{ fontSize: 18 }}>
+          <motion.p
+            initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.55, delay: 0.16 }}
+            className="text-gray-400 leading-relaxed mb-10 max-w-2xl mx-auto" style={{ fontSize: 18 }}>
             LastMinute AI reads your Google Calendar, identifies what's on fire,
             and builds your action plan — right now.
             From crisis to focused execution in&nbsp;10&nbsp;seconds.
-          </p>
+          </motion.p>
 
           {/* CTAs */}
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mb-7">
-            <button
+          <motion.div
+            initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.55, delay: 0.24 }}
+            className="flex flex-col sm:flex-row items-center justify-center gap-3 mb-7">
+            <motion.button
+              whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
               onClick={handleStart} disabled={loading}
-              className="flex items-center gap-2.5 bg-red-500 hover:bg-red-600 text-white px-8 py-4 rounded-xl font-bold transition-all active:scale-[0.98] disabled:opacity-60"
+              data-tour="cta"
+              className="flex items-center gap-2.5 bg-red-500 hover:bg-red-600 text-white px-8 py-4 rounded-xl font-bold transition-colors disabled:opacity-60"
               style={{ fontSize: 16, boxShadow: '0 8px 30px rgba(239,68,68,0.3)' }}
             >
               <AlertTriangle className="w-5 h-5 flex-shrink-0" />
               {loading ? 'Connecting…' : 'I have a deadline — save me'}
-            </button>
-            <button
+            </motion.button>
+            <motion.button
+              whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
               onClick={handleDemo} disabled={demoLoading}
-              className="flex items-center gap-2.5 border border-white/20 text-gray-300 hover:text-white hover:bg-white/5 px-7 py-4 rounded-xl font-medium transition-all disabled:opacity-60"
+              data-tour="demo"
+              className="flex items-center gap-2.5 border border-white/20 text-gray-300 hover:text-white hover:bg-white/5 px-7 py-4 rounded-xl font-medium transition-colors disabled:opacity-60"
               style={{ fontSize: 15 }}
             >
               <PlayCircle className="w-5 h-5 flex-shrink-0" />
               {demoLoading ? 'Loading demo…' : 'Try live demo — no login'}
-            </button>
-          </div>
+            </motion.button>
+          </motion.div>
 
           {/* Trust pills */}
           <div className="flex items-center justify-center gap-5 flex-wrap text-xs text-gray-600">
@@ -282,12 +324,14 @@ export default function Landing() {
       </section>
 
       {/* ── FEATURES ──────────────────────────────────────────────────────── */}
-      <section id="features" className="bg-gray-50 py-24 px-6">
+      <section id="features" data-tour="features" className="bg-gray-50 py-24 px-6">
         <div className="max-w-5xl mx-auto">
-          <div className="text-center mb-16">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.5 }}
+            className="text-center mb-16">
             <p className="text-xs font-bold uppercase tracking-widest text-green-600 mb-3">Features</p>
             <h2 className="text-4xl font-bold text-gray-900">Built for deadlines, not to-do lists</h2>
-          </div>
+          </motion.div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
             {[
               {
@@ -320,14 +364,17 @@ export default function Landing() {
                 title: 'Productivity Score',
                 desc: 'Calculated daily from completion rate, focus sessions, calendar load, and overdue tasks. Not vanity metrics.',
               },
-            ].map(f => (
-              <div key={f.title} className="bg-white border border-gray-200 rounded-2xl p-6 hover:shadow-md transition-shadow">
+            ].map((f, i) => (
+              <motion.div key={f.title}
+                initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
+                transition={{ duration: 0.4, delay: (i % 3) * 0.08 }}
+                className="bg-white border border-gray-200 rounded-2xl p-6 hover:shadow-md transition-shadow">
                 <div className={`w-11 h-11 rounded-xl ${f.color} flex items-center justify-center mb-4`}>
                   <f.icon className="w-5 h-5" />
                 </div>
                 <h3 className="font-bold text-gray-900 text-base mb-2">{f.title}</h3>
                 <p className="text-gray-500 text-sm leading-relaxed">{f.desc}</p>
-              </div>
+              </motion.div>
             ))}
           </div>
         </div>
@@ -409,6 +456,9 @@ export default function Landing() {
           </Link>
         </div>
       </footer>
+
+      {/* Guided welcome tour */}
+      <Tour steps={LANDING_TOUR} run={runTour} onClose={endTour} />
     </div>
   )
 }
