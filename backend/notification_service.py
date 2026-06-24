@@ -2,22 +2,19 @@ import os
 import json
 import asyncio
 from datetime import datetime, timezone
-from typing import Optional
 
 from pywebpush import webpush, WebPushException
 
 import database
 
-VAPID_PRIVATE_KEY = os.getenv("VAPID_PRIVATE_KEY", "")
-VAPID_PUBLIC_KEY = os.getenv("VAPID_PUBLIC_KEY", "")
-VAPID_EMAIL = os.getenv("VAPID_EMAIL", "admin@lastminute.ai")
-
 
 def send_push(subscription: dict, title: str, body: str, extra: dict = None) -> bool:
-    if not VAPID_PRIVATE_KEY:
-        print(f"[PUSH] VAPID key not set — skipping: {title}")
+    vapid_private = os.getenv("VAPID_PRIVATE_KEY", "")
+    if not vapid_private:
+        print(f"[PUSH] VAPID_PRIVATE_KEY not set — skipping: {title}")
         return False
     try:
+        vapid_email = os.getenv("VAPID_CLAIMS_EMAIL", "mailto:admin@lastminuteai.com")
         payload = json.dumps({
             "title": title,
             "body": body,
@@ -29,8 +26,8 @@ def send_push(subscription: dict, title: str, body: str, extra: dict = None) -> 
         webpush(
             subscription_info=subscription,
             data=payload,
-            vapid_private_key=VAPID_PRIVATE_KEY,
-            vapid_claims={"sub": f"mailto:{VAPID_EMAIL}"},
+            vapid_private_key=vapid_private,
+            vapid_claims={"sub": vapid_email},
         )
         return True
     except WebPushException as e:
@@ -61,6 +58,8 @@ async def check_and_send_reminders():
                         continue
                     sub = json.loads(sub_str)
                     task = r["task_title"]
+                    # r["id"] is the Firestore document ID (string)
+                    doc_id = r["id"]
 
                     if not r["reminder_24h_sent"] and 22 <= hours <= 26:
                         send_push(
@@ -69,7 +68,7 @@ async def check_and_send_reminders():
                             f"Deadline tomorrow at {dl.strftime('%I:%M %p')} UTC",
                             {"type": "24h", "deadline": dl_str},
                         )
-                        database.update_reminder_sent(r["id"], "24h")
+                        database.update_reminder_sent(doc_id, "24h")
 
                     elif not r["reminder_2h_sent"] and 1.5 <= hours <= 2.5:
                         send_push(
@@ -78,7 +77,7 @@ async def check_and_send_reminders():
                             "Due in 2 hours — time to wrap up!",
                             {"type": "2h", "deadline": dl_str},
                         )
-                        database.update_reminder_sent(r["id"], "2h")
+                        database.update_reminder_sent(doc_id, "2h")
 
                     elif not r["reminder_30m_sent"] and 0.25 <= hours <= 0.75:
                         send_push(
@@ -87,12 +86,12 @@ async def check_and_send_reminders():
                             "30 minutes left — submit NOW!",
                             {"type": "30m", "deadline": dl_str},
                         )
-                        database.update_reminder_sent(r["id"], "30m")
+                        database.update_reminder_sent(doc_id, "30m")
 
                 except Exception as e:
-                    print(f"[REMINDER] Error processing id={r['id']}: {e}")
+                    print(f"[REMINDER] Error processing doc={r.get('id')}: {e}")
 
         except Exception as e:
             print(f"[REMINDER] Loop error: {e}")
 
-        await asyncio.sleep(300)  # 5-minute interval
+        await asyncio.sleep(300)

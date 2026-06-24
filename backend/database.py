@@ -1,222 +1,184 @@
-import sqlite3
-import json
+"""
+Firestore persistence layer.
+All function signatures are kept identical to the original SQLite version
+so that calendar_service, gemini_agent, notification_service, and main.py
+require zero changes in how they call this module.
+"""
+
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional, List
 
-DB_PATH = os.getenv("DATABASE_URL", "lastminute.db").replace("sqlite:///./", "")
+import firebase_admin
+from firebase_admin import credentials, firestore
+from dotenv import load_dotenv
+
+load_dotenv()
+
+# ─── Initialise Firebase Admin SDK once ───────────────────────────────────────
+
+def _init_firebase():
+    if firebase_admin._apps:
+        return
+    raw_key = os.getenv("FIREBASE_PRIVATE_KEY", "")
+    # .env stores \n as literal backslash-n — convert to real newlines
+    private_key = raw_key.replace("\\n", "\n")
+    cred = credentials.Certificate({
+        "type": "service_account",
+        "project_id": os.getenv("FIREBASE_PROJECT_ID"),
+        "private_key": private_key,
+        "client_email": os.getenv("FIREBASE_CLIENT_EMAIL"),
+        "token_uri": "https://oauth2.googleapis.com/token",
+    })
+    firebase_admin.initialize_app(cred)
+    print("[Firebase] Initialised Firestore for project:", os.getenv("FIREBASE_PROJECT_ID"))
 
 
 def init_db():
-    conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
-
-    c.execute("""
-        CREATE TABLE IF NOT EXISTS sessions (
-            session_id TEXT PRIMARY KEY,
-            user_id    TEXT,
-            access_token  TEXT,
-            refresh_token TEXT,
-            token_expiry  TEXT,
-            created_at    TEXT,
-            updated_at    TEXT
-        )
-    """)
-
-    c.execute("""
-        CREATE TABLE IF NOT EXISTS conversations (
-            id         INTEGER PRIMARY KEY AUTOINCREMENT,
-            session_id TEXT,
-            role       TEXT,
-            content    TEXT,
-            timestamp  TEXT,
-            FOREIGN KEY (session_id) REFERENCES sessions(session_id)
-        )
-    """)
-
-    c.execute("""
-        CREATE TABLE IF NOT EXISTS tasks (
-            id               TEXT PRIMARY KEY,
-            session_id       TEXT,
-            title            TEXT,
-            description      TEXT,
-            deadline         TEXT,
-            priority         TEXT,
-            urgency_score    REAL,
-            importance_score REAL,
-            effort_estimate  INTEGER,
-            completed        INTEGER DEFAULT 0,
-            created_at       TEXT,
-            FOREIGN KEY (session_id) REFERENCES sessions(session_id)
-        )
-    """)
-
-    c.execute("""
-        CREATE TABLE IF NOT EXISTS reminders (
-            id                  INTEGER PRIMARY KEY AUTOINCREMENT,
-            session_id          TEXT,
-            task_title          TEXT,
-            deadline            TEXT,
-            reminder_24h_sent   INTEGER DEFAULT 0,
-            reminder_2h_sent    INTEGER DEFAULT 0,
-            reminder_30m_sent   INTEGER DEFAULT 0,
-            push_subscription   TEXT,
-            created_at          TEXT
-        )
-    """)
-
-    conn.commit()
-    conn.close()
+    """Called from main.py lifespan — initialises Firebase."""
+    _init_firebase()
 
 
-def get_session(session_id: str) -> Optional[dict]:
-    conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
-    c.execute("SELECT * FROM sessions WHERE session_id = ?", (session_id,))
-    row = c.fetchone()
-    conn.close()
-    if row:
-        return {
-            "session_id": row[0], "user_id": row[1],
-            "access_token": row[2], "refresh_token": row[3],
-            "token_expiry": row[4], "created_at": row[5], "updated_at": row[6],
-        }
-    return None
+def _db() -> firestore.client:
+    _init_firebase()
+    return firestore.client()
 
+
+# ─── Sessions ─────────────────────────────────────────────────────────────────
+# Collection: sessions/{session_id}
 
 def save_session(session_id: str, user_id: str, access_token: str,
                  refresh_token: str, token_expiry: str):
-    conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
     now = datetime.utcnow().isoformat()
-    c.execute("""
-        INSERT INTO sessions (session_id, user_id, access_token, refresh_token,
-                              token_expiry, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
-        ON CONFLICT(session_id) DO UPDATE SET
-            user_id=excluded.user_id,
-            access_token=excluded.access_token,
-            refresh_token=excluded.refresh_token,
-            token_expiry=excluded.token_expiry,
-            updated_at=excluded.updated_at
-    """, (session_id, user_id, access_token, refresh_token, token_expiry, now, now))
-    conn.commit()
-    conn.close()
+    doc_ref = _db().collection("sessions").document(session_id)
+    existing = doc_ref.get()
+    data = {
+        "session_id": session_id,
+        "user_id": user_id,
+        "access_token": access_token,
+        "refresh_token": refresh_token,
+        "token_expiry": token_expiry,
+        "updated_at": now,
+    }
+    if existing.exists:
+        doc_ref.update(data)
+    else:
+        data["created_at"] = now
+        doc_ref.set(data)
+
+
+def get_session(session_id: str) -> Optional[dict]:
+    doc = _db().collection("sessions").document(session_id).get()
+    if doc.exists:
+        return doc.to_dict()
+    return None
+
+
+# ─── Conversations ─────────────────────────────────────────────────────────────
+# Collection: conversations/{session_id}
+# Messages stored as an ordered array inside the document.
+# Max doc size is 1 MB; 20 messages of ~500 chars each ≈ 10 KB — well within limits.
+
+def save_message(session_id: str, role: str, content: str):
+    db = _db()
+    now = datetime.utcnow().isoformat()
+    doc_ref = db.collection("conversations").document(session_id)
+    message = {"role": role, "content": content, "timestamp": now}
+    doc_ref.set(
+        {"messages": firestore.ArrayUnion([message]), "updated_at": now},
+        merge=True,
+    )
 
 
 def get_conversation_history(session_id: str, limit: int = 20) -> List[dict]:
-    conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
-    c.execute(
-        "SELECT role, content, timestamp FROM conversations "
-        "WHERE session_id = ? ORDER BY timestamp DESC LIMIT ?",
-        (session_id, limit),
-    )
-    rows = c.fetchall()
-    conn.close()
-    return [{"role": r[0], "content": r[1], "timestamp": r[2]} for r in reversed(rows)]
+    doc = _db().collection("conversations").document(session_id).get()
+    if not doc.exists:
+        return []
+    messages = doc.to_dict().get("messages", [])
+    # Sort by timestamp ascending, return last `limit` messages
+    messages.sort(key=lambda m: m.get("timestamp", ""))
+    return messages[-limit:]
 
 
-def save_message(session_id: str, role: str, content: str):
-    conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
-    c.execute(
-        "INSERT INTO conversations (session_id, role, content, timestamp) VALUES (?, ?, ?, ?)",
-        (session_id, role, content, datetime.utcnow().isoformat()),
-    )
-    conn.commit()
-    conn.close()
-
+# ─── Tasks ────────────────────────────────────────────────────────────────────
+# Collection: tasks/{task_id}
 
 def save_task(session_id: str, task: dict):
-    conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
-    c.execute("""
-        INSERT INTO tasks (id, session_id, title, description, deadline, priority,
-                           urgency_score, importance_score, effort_estimate,
-                           completed, created_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ON CONFLICT(id) DO UPDATE SET
-            title=excluded.title, description=excluded.description,
-            deadline=excluded.deadline, priority=excluded.priority,
-            urgency_score=excluded.urgency_score,
-            importance_score=excluded.importance_score,
-            effort_estimate=excluded.effort_estimate,
-            completed=excluded.completed
-    """, (
-        task.get("id"), session_id, task.get("title"), task.get("description"),
-        task.get("deadline"), task.get("priority"),
-        task.get("urgency_score"), task.get("importance_score"),
-        task.get("effort_estimate"), int(task.get("completed", False)),
-        task.get("created_at", datetime.utcnow().isoformat()),
-    ))
-    conn.commit()
-    conn.close()
+    db = _db()
+    task_id = task.get("id")
+    if not task_id:
+        import uuid
+        task_id = str(uuid.uuid4())
+
+    data = {
+        "id": task_id,
+        "session_id": session_id,
+        "title": task.get("title", ""),
+        "description": task.get("description", ""),
+        "deadline": task.get("deadline", ""),
+        "priority": task.get("priority", ""),
+        "urgency_score": task.get("urgency_score"),
+        "importance_score": task.get("importance_score"),
+        "effort_estimate": task.get("effort_estimate"),
+        "completed": bool(task.get("completed", False)),
+        "created_at": task.get("created_at", datetime.utcnow().isoformat()),
+    }
+    db.collection("tasks").document(task_id).set(data, merge=True)
 
 
 def get_tasks(session_id: str) -> List[dict]:
-    conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
-    c.execute(
-        "SELECT id, session_id, title, description, deadline, priority, "
-        "urgency_score, importance_score, effort_estimate, completed, created_at "
-        "FROM tasks WHERE session_id = ? ORDER BY created_at DESC",
-        (session_id,),
+    docs = (
+        _db()
+        .collection("tasks")
+        .where("session_id", "==", session_id)
+        .stream()
     )
-    rows = c.fetchall()
-    conn.close()
-    return [{
-        "id": r[0], "session_id": r[1], "title": r[2], "description": r[3],
-        "deadline": r[4], "priority": r[5], "urgency_score": r[6],
-        "importance_score": r[7], "effort_estimate": r[8],
-        "completed": bool(r[9]), "created_at": r[10],
-    } for r in rows]
+    tasks = [d.to_dict() for d in docs]
+    tasks.sort(key=lambda t: t.get("created_at", ""), reverse=True)
+    return tasks
 
 
 def complete_task(task_id: str, session_id: str):
-    conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
-    c.execute(
-        "UPDATE tasks SET completed = 1 WHERE id = ? AND session_id = ?",
-        (task_id, session_id),
-    )
-    conn.commit()
-    conn.close()
+    db = _db()
+    doc_ref = db.collection("tasks").document(task_id)
+    doc = doc_ref.get()
+    if doc.exists and doc.to_dict().get("session_id") == session_id:
+        doc_ref.update({"completed": True})
 
+
+# ─── Reminders ────────────────────────────────────────────────────────────────
+# Collection: reminders/{auto_id}
 
 def save_reminder(session_id: str, task_title: str, deadline: str, push_subscription: str):
-    conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
-    c.execute("""
-        INSERT INTO reminders (session_id, task_title, deadline,
-                               push_subscription, created_at)
-        VALUES (?, ?, ?, ?, ?)
-    """, (session_id, task_title, deadline, push_subscription, datetime.utcnow().isoformat()))
-    conn.commit()
-    conn.close()
+    db = _db()
+    db.collection("reminders").add({
+        "session_id": session_id,
+        "task_title": task_title,
+        "deadline": deadline,
+        "push_subscription": push_subscription,
+        "reminder_24h_sent": False,
+        "reminder_2h_sent": False,
+        "reminder_30m_sent": False,
+        "created_at": datetime.utcnow().isoformat(),
+    })
 
 
 def get_pending_reminders() -> List[dict]:
-    conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
-    c.execute("""
-        SELECT id, session_id, task_title, deadline,
-               reminder_24h_sent, reminder_2h_sent, reminder_30m_sent, push_subscription
-        FROM reminders WHERE reminder_30m_sent = 0
-    """)
-    rows = c.fetchall()
-    conn.close()
-    return [{
-        "id": r[0], "session_id": r[1], "task_title": r[2], "deadline": r[3],
-        "reminder_24h_sent": bool(r[4]), "reminder_2h_sent": bool(r[5]),
-        "reminder_30m_sent": bool(r[6]), "push_subscription": r[7],
-    } for r in rows]
+    docs = (
+        _db()
+        .collection("reminders")
+        .where("reminder_30m_sent", "==", False)
+        .stream()
+    )
+    result = []
+    for doc in docs:
+        data = doc.to_dict()
+        data["id"] = doc.id      # Firestore doc ID (string)
+        result.append(data)
+    return result
 
 
-def update_reminder_sent(reminder_id: int, reminder_type: str):
+def update_reminder_sent(reminder_id: str, reminder_type: str):
+    """reminder_id is the Firestore document ID string."""
     col = f"reminder_{reminder_type}_sent"
-    conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
-    c.execute(f"UPDATE reminders SET {col} = 1 WHERE id = ?", (reminder_id,))
-    conn.commit()
-    conn.close()
+    _db().collection("reminders").document(reminder_id).update({col: True})

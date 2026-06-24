@@ -8,18 +8,23 @@ const api = axios.create({
 // ─── Auth ─────────────────────────────────────────────────────────────────────
 
 export const getAuthUrl = (sessionId) =>
-  api.get(`/auth/login${sessionId ? `?session_id=${sessionId}` : ''}`)
+  api.get(`/api/auth/login${sessionId ? `?session_id=${sessionId}` : ''}`)
     .then(r => r.data)
 
 export const getAuthStatus = (sessionId) =>
-  api.get(`/auth/status/${sessionId}`).then(r => r.data)
+  api.get(`/api/auth/status/${sessionId}`).then(r => r.data)
 
 // ─── Chat ─────────────────────────────────────────────────────────────────────
 
 export const getConversations = (sessionId) =>
   api.get(`/api/conversations/${sessionId}`).then(r => r.data)
 
-// Streaming chat — returns a ReadableStream via fetch (not axios)
+/**
+ * Streaming chat via Server-Sent Events.
+ * onChunk(chunk, fullText) — called for each text token
+ * onToolCalls(toolCallsArray) — called when the agent executes tools
+ * onDone(finalText) — called when the stream ends
+ */
 export const streamChat = async (message, sessionId, onChunk, onToolCalls, onDone) => {
   const resp = await fetch('/api/chat', {
     method: 'POST',
@@ -40,7 +45,7 @@ export const streamChat = async (message, sessionId, onChunk, onToolCalls, onDon
 
     buffer += decoder.decode(value, { stream: true })
     const lines = buffer.split('\n')
-    buffer = lines.pop()
+    buffer = lines.pop()   // keep incomplete line in buffer
 
     for (const line of lines) {
       if (!line.startsWith('data: ')) continue
@@ -52,14 +57,14 @@ export const streamChat = async (message, sessionId, onChunk, onToolCalls, onDon
       try {
         const { chunk } = JSON.parse(payload)
         if (chunk.startsWith('\n\n__TOOL_CALLS__:')) {
-          const json = chunk.replace('\n\n__TOOL_CALLS__:', '')
-          onToolCalls?.(JSON.parse(json))
+          const jsonStr = chunk.replace('\n\n__TOOL_CALLS__:', '')
+          onToolCalls?.(JSON.parse(jsonStr))
         } else {
           fullText += chunk
           onChunk?.(chunk, fullText)
         }
       } catch {
-        // ignore malformed SSE frames
+        // skip malformed SSE frames
       }
     }
   }
@@ -101,5 +106,7 @@ export const getVapidKey = () =>
 
 export const subscribeNotification = (sessionId, subscription, taskTitle, deadline) =>
   api.post(`/api/notifications/subscribe/${sessionId}`, {
-    subscription, task_title: taskTitle, deadline,
+    subscription,
+    task_title: taskTitle,
+    deadline,
   }).then(r => r.data)

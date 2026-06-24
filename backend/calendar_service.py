@@ -1,5 +1,4 @@
 import os
-import json
 from datetime import datetime, timedelta, timezone
 from typing import List, Optional
 
@@ -17,6 +16,12 @@ SCOPES = [
     "https://www.googleapis.com/auth/userinfo.profile",
 ]
 
+_DEFAULT_REDIRECT = "http://localhost:8000/api/auth/callback/google"
+
+
+def _redirect_uri() -> str:
+    return os.getenv("GOOGLE_REDIRECT_URI", _DEFAULT_REDIRECT)
+
 
 def _client_config() -> dict:
     return {
@@ -25,14 +30,14 @@ def _client_config() -> dict:
             "client_secret": os.getenv("GOOGLE_CLIENT_SECRET"),
             "auth_uri": "https://accounts.google.com/o/oauth2/auth",
             "token_uri": "https://oauth2.googleapis.com/token",
-            "redirect_uris": [os.getenv("GOOGLE_REDIRECT_URI", "http://localhost:8000/auth/callback")],
+            "redirect_uris": [_redirect_uri()],
         }
     }
 
 
 def get_auth_url(session_id: str) -> str:
     flow = Flow.from_client_config(_client_config(), scopes=SCOPES)
-    flow.redirect_uri = os.getenv("GOOGLE_REDIRECT_URI", "http://localhost:8000/auth/callback")
+    flow.redirect_uri = _redirect_uri()
     auth_url, _ = flow.authorization_url(
         access_type="offline",
         include_granted_scopes="true",
@@ -44,10 +49,11 @@ def get_auth_url(session_id: str) -> str:
 
 def handle_oauth_callback(code: str, session_id: str) -> dict:
     flow = Flow.from_client_config(_client_config(), scopes=SCOPES, state=session_id)
-    flow.redirect_uri = os.getenv("GOOGLE_REDIRECT_URI", "http://localhost:8000/auth/callback")
+    flow.redirect_uri = _redirect_uri()
     flow.fetch_token(code=code)
     creds = flow.credentials
 
+    # Fetch user profile via OAuth2 API
     service = build("oauth2", "v2", credentials=creds)
     user_info = service.userinfo().get().execute()
 
@@ -59,7 +65,10 @@ def handle_oauth_callback(code: str, session_id: str) -> dict:
         token_expiry=creds.expiry.isoformat() if creds.expiry else "",
     )
 
-    return {"email": user_info.get("email", ""), "name": user_info.get("name", "")}
+    return {
+        "email": user_info.get("email", ""),
+        "name": user_info.get("name", ""),
+    }
 
 
 def get_credentials(session_id: str) -> Optional[Credentials]:
@@ -76,6 +85,7 @@ def get_credentials(session_id: str) -> Optional[Credentials]:
         scopes=SCOPES,
     )
 
+    # Auto-refresh expired token and persist updated tokens to Firestore
     if creds.expired and creds.refresh_token:
         creds.refresh(Request())
         database.save_session(
@@ -162,7 +172,6 @@ def create_calendar_event(
 
 
 def get_calendar_gaps(session_id: str, date: str, duration_minutes: int = 60) -> List[dict]:
-    """Return free time slots of at least `duration_minutes` on the given date."""
     creds = get_credentials(session_id)
     if not creds:
         raise ValueError("Not authenticated")

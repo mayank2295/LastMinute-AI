@@ -20,8 +20,13 @@ export async function registerServiceWorker() {
 
 export async function subscribeToPush(sessionId, taskTitle, deadline) {
   try {
-    const { public_key } = await getVapidKey()
-    if (!public_key) return false
+    // Prefer build-time VITE env var; fall back to fetching from backend
+    let publicKey = import.meta.env.VITE_VAPID_PUBLIC_KEY
+    if (!publicKey) {
+      const data = await getVapidKey()
+      publicKey = data.public_key
+    }
+    if (!publicKey) return false
 
     const reg = await registerServiceWorker()
     if (!reg) return false
@@ -31,7 +36,7 @@ export async function subscribeToPush(sessionId, taskTitle, deadline) {
 
     const sub = await reg.pushManager.subscribe({
       userVisibleOnly: true,
-      applicationServerKey: urlBase64ToUint8Array(public_key),
+      applicationServerKey: urlBase64ToUint8Array(publicKey),
     })
 
     await subscribeNotification(sessionId, sub.toJSON(), taskTitle, deadline)

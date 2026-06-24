@@ -24,7 +24,7 @@ from models import ChatRequest, CreateEventRequest, PrioritizeRequest, Subscribe
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    database.init_db()
+    database.init_db()          # initialises Firebase Admin SDK
     asyncio.create_task(notification_service.check_and_send_reminders())
     yield
 
@@ -37,7 +37,6 @@ app.add_middleware(
         "http://localhost:5173",
         "http://localhost:3000",
         os.getenv("FRONTEND_URL", "http://localhost:5173"),
-        "*",
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -52,9 +51,9 @@ async def health():
     return {"status": "ok", "timestamp": datetime.utcnow().isoformat()}
 
 
-# ─── Auth ─────────────────────────────────────────────────────────────────────
+# ─── Auth  (all under /api/auth/) ─────────────────────────────────────────────
 
-@app.get("/auth/login")
+@app.get("/api/auth/login")
 async def login(session_id: Optional[str] = Query(default=None)):
     if not session_id:
         session_id = str(uuid.uuid4())
@@ -62,20 +61,26 @@ async def login(session_id: Optional[str] = Query(default=None)):
     return {"auth_url": auth_url, "session_id": session_id}
 
 
-@app.get("/auth/callback")
+@app.get("/api/auth/callback/google")
 async def oauth_callback(code: str, state: str):
+    """
+    Google redirects here after the user grants permission.
+    We exchange the code, store tokens in Firestore, then redirect the browser
+    back to the React frontend with session_id + user info as query params.
+    """
     try:
         user_info = calendar_service.handle_oauth_callback(code, state)
         frontend = os.getenv("FRONTEND_URL", "http://localhost:5173")
         name = user_info.get("name", "").replace(" ", "%20")
         return RedirectResponse(
-            url=f"{frontend}?session_id={state}&user={user_info['email']}&name={name}"
+            url=f"{frontend}?session_id={state}&user={user_info['email']}&name={name}",
+            status_code=302,
         )
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
 
-@app.get("/auth/status/{session_id}")
+@app.get("/api/auth/status/{session_id}")
 async def auth_status(session_id: str):
     session = database.get_session(session_id)
     if session:
@@ -132,7 +137,11 @@ async def create_event(session_id: str, body: CreateEventRequest):
 
 
 @app.get("/api/calendar/gaps/{session_id}")
-async def get_gaps(session_id: str, date: str = Query(...), duration_minutes: int = Query(default=60)):
+async def get_gaps(
+    session_id: str,
+    date: str = Query(...),
+    duration_minutes: int = Query(default=60),
+):
     try:
         gaps = calendar_service.get_calendar_gaps(session_id, date, duration_minutes)
         return {"gaps": gaps}

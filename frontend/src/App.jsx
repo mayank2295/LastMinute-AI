@@ -21,26 +21,29 @@ export default function App() {
   const [taskRefresh, setTaskRefresh] = useState(0)
   const qc = useQueryClient()
 
-  // Parse OAuth callback params + stored session
   useEffect(() => {
+    // Google redirects back to this page with ?session_id=...&user=...&name=...
     const params = new URLSearchParams(window.location.search)
-    const sid = params.get('session_id')
+    const sid   = params.get('session_id')
     const email = params.get('user')
-    const name = params.get('name')
+    const name  = params.get('name')
 
     if (sid && email) {
+      // Fresh OAuth callback — store and activate
       setSessionId(sid)
       setUserEmail(decodeURIComponent(email))
       setUserName(decodeURIComponent(name || ''))
       localStorage.setItem('lm_session_id', sid)
       localStorage.setItem('lm_email', email)
       localStorage.setItem('lm_name', name || '')
+      // Clean up URL without reloading
       window.history.replaceState({}, '', '/')
       setAuthChecked(true)
       registerServiceWorker()
       return
     }
 
+    // Check for a persisted session
     const stored = localStorage.getItem('lm_session_id')
     if (stored) {
       getAuthStatus(stored)
@@ -50,6 +53,11 @@ export default function App() {
             setUserEmail(localStorage.getItem('lm_email') || '')
             setUserName(localStorage.getItem('lm_name') || '')
             registerServiceWorker()
+          } else {
+            // Token expired or session gone — clear storage
+            localStorage.removeItem('lm_session_id')
+            localStorage.removeItem('lm_email')
+            localStorage.removeItem('lm_name')
           }
         })
         .catch(() => {})
@@ -65,6 +73,7 @@ export default function App() {
     localStorage.removeItem('lm_name')
     setSessionId(null)
     setUserEmail('')
+    setUserName('')
     qc.clear()
   }
 
@@ -74,7 +83,6 @@ export default function App() {
     qc.invalidateQueries({ queryKey: ['productivity', sessionId] })
   }, [sessionId, qc])
 
-  // Calendar for deadline alerts
   const { data: calEvents = [] } = useCalendar(sessionId)
 
   if (!authChecked) {
@@ -102,12 +110,12 @@ export default function App() {
           <span className="font-bold text-white text-sm tracking-tight">LastMinute AI</span>
         </div>
 
-        <div className="flex-1">
+        <div className="flex-1 min-w-0">
           <ProductivityScore sessionId={sessionId} />
         </div>
 
-        <div className="flex items-center gap-3">
-          <span className="text-xs text-text-muted hidden sm:block">
+        <div className="flex items-center gap-3 flex-shrink-0">
+          <span className="text-xs text-text-muted hidden sm:block truncate max-w-[180px]">
             {userName || userEmail}
           </span>
           <button
