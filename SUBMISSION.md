@@ -1,157 +1,223 @@
-# LastMinute AI — Hackathon Submission
+# LastMinute AI — Project Description
 
-**BlockseBlock National Hackathon 2026**
-**Problem Statement 1: The Last-Minute Life Saver**
+### BlockseBlock National Hackathon 2026 · Problem Statement: *The Last-Minute Life Saver*
 
----
+| | |
+|---|---|
+| 🌐 **Live App** | https://lastminute-ai-ummt2blwla-el.a.run.app |
+| 💻 **GitHub** | https://github.com/mayank2295/LastMinute-AI |
+| ▶️ **Fastest way to evaluate** | Click **“Try live demo — no login”** on the landing page — full product, sample data, zero setup. |
 
-## Submission Links
-
-| Item | Link |
-|------|------|
-| **Deployed Application** (Google Cloud Run) | https://lastminute-ai-ummt2blwla-el.a.run.app |
-| **GitHub Repository** | https://github.com/mayank2295/LastMinute-AI |
-| **Project Description** (this document) | *(paste this content into a Google Doc and share "anyone with the link")* |
-
-> **Tip for evaluators:** Click **"Try live demo — no login"** on the landing page to
-> explore the full product instantly with realistic sample data — no Google sign-in required.
+> **📄 To build the Google Doc:** paste this content into a Google Doc, then drag in the
+> 5 diagram images from the repo folder **`docs/diagrams/`** at each *Figure* spot.
+> They already render inline here on GitHub.
 
 ---
 
-## Problem Statement Selected
+## 🎯 In one line
 
-**The Last-Minute Life Saver.**
+**LastMinute AI is an autonomous AI agent that reads your Google Calendar and takes
+real action to beat your deadlines — it plans your day, blocks your focus time, and
+escalates reminders, all by itself — powered by Google Gemini on Google Cloud.**
 
-Everyone has been there: a deadline is hours away, your calendar is chaos, and you
-don't know where to start. Existing to-do apps are passive — they hold a list but
-never tell you what to do *right now*, and generic AI chatbots give advice but can't
-actually touch your schedule. The result is decision paralysis exactly when time is
-shortest.
-
-LastMinute AI is built for that moment of panic: a productivity agent that doesn't
-wait to be asked. It reads your real Google Calendar, identifies what's most urgent,
-and **takes action on your behalf** — planning your day, blocking focus time, and
-escalating reminders — so you spend your remaining minutes executing, not organising.
+The magic moment: *you open the app and it has already planned your day and created
+focus-time blocks on your real calendar — before you typed a single word.*
 
 ---
 
-## Solution Overview
+## 1. Problem Statement Selected — *The Last-Minute Life Saver*
 
-LastMinute AI is an **autonomous, agentic productivity co-pilot** powered by
-**Google Gemini** and the **Google Calendar API**, deployed on **Google Cloud Run**.
+Picture the moment everyone dreads: a deadline is **two hours away**, your calendar is
+chaos, and you freeze — not because you can't do the work, but because you don't know
+*where to start*.
 
-Unlike a chatbot you have to drive, LastMinute AI is proactive. Each day it
-automatically reads your calendar, uses Gemini to write a personalised action plan,
-and **auto-creates focus-time blocks directly on your real Google Calendar** — before
-you even open the app. Throughout the day it escalates push reminders at 24-hour,
-2-hour, and 30-minute thresholds via Google Cloud Scheduler, and a live "Mission
-Control" status bar pulses red when a deadline is within two hours.
+This is a universal pain for students, professionals, and founders. And today's tools
+make it worse, not better:
 
-The agent is genuinely action-taking. Through Gemini's function calling it can create
-calendar events, prioritise tasks into a smart queue, find free time slots, and set
-reminders — all from natural language. A "Brain Dump" feature lets a panicking user
-paste everything on their mind in plain text; Gemini extracts each task, infers
-deadlines, estimates effort, and ranks them instantly.
+- **To-do apps are passive.** They hold a list and buzz a reminder — then do nothing to
+  help you actually finish.
+- **AI chatbots only talk.** ChatGPT can *advise* ("break it into smaller tasks") but it
+  can't *touch* your calendar or take any action.
 
-Everything is built on Google's platform end to end: Gemini for intelligence,
-Calendar API for real scheduling, Firestore for persistence, Secret Manager for
-credentials, Cloud Scheduler for autonomy, and Cloud Run for hosting. The entire
-application is live, deployed, and usable today — including a one-click Demo Mode so
-anyone can experience it without signing in.
+The result is **decision paralysis at the worst possible time.** The problem isn't a
+lack of reminders — it's the lack of an assistant that will *act*.
 
 ---
 
-## Key Features
+## 2. Solution Overview
 
-1. **Plan My Day (autonomous agent).** Google Gemini reads your calendar and open
-   tasks, writes a concise action plan, and automatically blocks focus time in your
-   largest free gap — on your real Google Calendar. Runs proactively once per day
-   with no user action required.
+LastMinute AI is a **proactive, agentic productivity co-pilot.** Instead of waiting for
+instructions, it connects to your Google Calendar, figures out what's most urgent, and
+**takes action on your behalf** — using **Google Gemini** as its brain and the **Google
+Calendar API** as its hands.
 
-2. **Agentic AI chat with function calling.** Ask in plain language ("schedule my
-   report tomorrow at 3 PM") and Gemini actually does it — creating the event,
-   prioritising tasks, finding free slots, or setting reminders through five real
-   tools, not just describing what it would do.
+It doesn't just answer questions; it **does things**: creates calendar events, blocks
+focus time in your free gaps, prioritises your tasks, and fires escalating reminders —
+autonomously, even when the app is closed. The entire product is **live and deployed on
+Google Cloud Run**, and anyone can try it instantly through a no-login **Demo Mode**.
 
-3. **Brain Dump → structured plan.** Paste a chaotic paragraph of everything you
-   need to do; Gemini extracts each task, infers deadlines, estimates effort, and
-   prioritises them in seconds.
+![System Architecture](docs/diagrams/architecture.png)
+*Figure 1 — System architecture: one Cloud Run container wired to Google services.*
 
-4. **Smart Game Plan.** A ranked, time-bucketed action queue (Overdue → Today →
-   Tomorrow → This week) with a clear "Start here" recommendation — it tells you
-   exactly what to do next instead of making you categorise tasks.
-
-5. **Escalating reminders.** Browser push notifications fire at 24h, 2h, and 30 min
-   before each deadline, driven reliably by Google Cloud Scheduler.
-
-6. **Live Google Calendar sync.** Real events with live countdowns, overdue flags,
-   and urgency colours, plus a timezone-correct scheduling engine.
-
-7. **Mission Control status bar.** A persistent, live deadline indicator that pulses
-   red within two hours of a deadline.
-
-8. **Focus Timer & Productivity Score.** Pomodoro / Deep Work / Sprint timer with
-   sessions saved to Firestore, feeding a productivity score computed from completion
-   rate, focus time, and calendar load.
-
-9. **Polished, accessible UX.** Guided onboarding tour (skippable), dark/light theme,
-   Framer Motion animations, and a one-click **Demo Mode** that needs no login.
+*Plain-English version of the diagram:* Your browser runs a fast web app. That talks to
+one program on Google Cloud Run. That program uses **Gemini** to think, the **Calendar
+API** to read and write your schedule, **Firestore** to remember everything, and **Web
+Push** to send alerts. **Google OAuth** logs you in safely, **Secret Manager** guards
+the keys, and **Cloud Scheduler** wakes the app every few minutes so it can act on its
+own. Every single piece is Google technology.
 
 ---
 
-## Technologies Used
+## 3. How It Works
+
+### For anyone — the user's journey
+
+![User Workflow](docs/diagrams/workflow.png)
+*Figure 2 — The user's journey from panic to plan.*
+
+1. You're in a **deadline panic**.
+2. You **open the app** (or click Try Demo — no login).
+3. The AI **reads your calendar** and sees what's on fire.
+4. **Plan My Day** writes your plan and **blocks focus time** on your real calendar.
+5. You just **execute** — the organising is done for you.
+6. **Escalating reminders** keep you on track to the finish line.
+
+### For the technical reviewer — how the agent *acts*
+
+The core of the product is **function calling**. Gemini isn't just generating text — it
+decides which real action to take, and our backend executes it. Here is exactly what
+happens when you say *"schedule my report tomorrow at 3 PM":*
+
+![Agent Sequence](docs/diagrams/agent_sequence.png)
+*Figure 3 — How the agent takes a real action via Gemini function calling.*
+
+The message hits the API → the backend gives Gemini the user's context and a set of
+tools → Gemini **chooses** `create_calendar_event(...)` → the backend calls the **Google
+Calendar API** and the event appears on the real calendar → the result goes back to
+Gemini, which writes a human reply → it streams to the user and is logged to the
+**Activity Feed**. *This loop — decide, act, confirm — is what makes it an agent, not a
+chatbot.*
+
+---
+
+## 4. Key Features
+
+| # | Feature | What it does | Why it matters |
+|---|---------|--------------|----------------|
+| 1 | **Plan My Day** *(autonomous)* | Gemini reads your calendar + tasks, writes a plan, and **auto-creates a focus block** in your largest free slot. Runs once a day with no click. | The agent acts *without being asked* — true autonomy. |
+| 2 | **Agentic AI chat** | Natural language → real actions via 5 function-calling tools (create event, prioritise, find free time, set reminder, fetch deadlines). | It *does*, it doesn't just advise. |
+| 3 | **Brain Dump** | Paste a messy paragraph → Gemini extracts tasks, infers deadlines, estimates effort, prioritises. | Removes the friction of manual entry in a panic. |
+| 4 | **Gemini Vision (Scan)** | Upload a photo of a syllabus/timetable → deadlines become tasks automatically. | Multimodal AI — turns the real world into a plan. |
+| 5 | **Smart Game Plan** | A ranked, time-bucketed queue (Overdue → Today → Tomorrow → Week) with a clear “Start here”. | Tells you the *one* thing to do next. |
+| 6 | **Escalating reminders** | Push + email alerts at 24h → 2h → 1h → 30 min, driven by Cloud Scheduler. | Proactive, not passive — and works app-closed. |
+| 7 | **Mission Control bar** | A live status bar that pulses red within 2 hours of a deadline. | Constant, glanceable urgency. |
+| 8 | **Focus Timer + Productivity Score** | Pomodoro/Deep-Work timer; score from real completion, focus time, and calendar load. | Measures real output, not vanity metrics. |
+| 9 | **Agent Activity Log** | A live feed of everything the agent did on its own. | Visible *proof* of autonomy. |
+| 10 | **Polished UX** | Guided tour, dark/light theme, animations, and one-click Demo Mode. | Judge-ready and genuinely usable. |
+
+---
+
+## 5. What Makes It Agentic (the heart of the project)
+
+Most submissions build a chatbot you *talk to*. LastMinute AI is an agent that *acts for
+you* — and it proves it three ways:
+
+1. **Function calling** — Gemini performs real, irreversible actions on your Google
+   Calendar, not suggestions.
+2. **Cloud Scheduler** — an external clock triggers the agent every 5 minutes, so it
+   plans and reminds **even when nobody has the app open**.
+3. **The Activity Log** — a visible record of the autonomous actions it took, so the
+   autonomy is demonstrable, not just claimed.
+
+---
+
+## 6. Technologies Used
 
 - **Frontend:** React 18, Vite, Tailwind CSS, Framer Motion, TanStack Query, React Router
 - **Backend:** Python 3.11, FastAPI, Uvicorn
-- **AI:** Google Gemini 2.0 Flash (function calling)
-- **Data:** Google Firebase Firestore
+- **AI:** Google Gemini 2.0 Flash (text, function calling, and vision)
+- **Database:** Google Firebase Firestore
 - **Auth:** Google OAuth 2.0
 - **Notifications:** Web Push API with VAPID
-- **Infrastructure:** Google Cloud Run, Google Cloud Build, Google Cloud Scheduler, Google Secret Manager
+- **Cloud / Infra:** Google Cloud Run, Google Cloud Build, Google Cloud Scheduler, Google Secret Manager
+
+![Data Model](docs/diagrams/data_model.png)
+*Figure 4 — The six Firestore collections that persist all app data.*
 
 ---
 
-## Google Technologies Utilized
+## 7. Google Technologies Utilized
 
-- **Google Gemini 2.0 Flash** — the core intelligence of the product. Gemini powers
-  the agentic chat (via function calling), the autonomous daily planner, the
-  brain-dump task extractor, and the AI morning briefing. Every "smart" behaviour in
-  the app is a Gemini call.
+Every one of these is **load-bearing** — remove any and a real feature breaks. This is
+deep integration, not a logo on a slide.
 
-- **Google Calendar API v3** — deep, two-way integration. The app reads upcoming
-  events, creates events and focus blocks, and computes free/busy gaps to schedule
-  deep-work time automatically. This is not a read-only display — the agent writes to
-  the user's real calendar.
+- **Google Gemini 2.0 Flash** — the product's entire intelligence. It powers the
+  agentic chat (function calling), the autonomous daily planner, the brain-dump task
+  extractor, and the Vision document scanner. Every “smart” action is a Gemini call.
+- **Google Calendar API v3** — true **two-way** integration: reads your events, **creates**
+  events and focus blocks, and computes free/busy gaps to schedule deep work. The agent
+  writes to your real calendar — it's not a read-only display.
+- **Google Cloud Run** — hosts the containerised app (React UI + FastAPI) as one
+  managed, auto-scaling service at a public URL.
+- **Google Cloud Scheduler** — drives all autonomous behaviour (reminder checks and the
+  daily-planning job), so the agent works without the app being open.
+- **Firebase Firestore** — the persistence layer; all data survives across sessions and devices.
+- **Google Secret Manager** — securely stores the Firebase private key, injected at
+  runtime, never committed to source.
+- **Google OAuth 2.0** — secure, scoped sign-in; users grant Calendar access and **no
+  passwords are ever stored.**
 
-- **Google Cloud Run** — the application is containerised and deployed on Cloud Run,
-  serving the React frontend and FastAPI backend from a single managed, autoscaling
-  service.
-
-- **Google Cloud Scheduler** — powers all autonomous behaviour: periodic reminder
-  checks and the scheduled daily-planning job, so the agent acts even when no one has
-  the app open.
-
-- **Firebase Firestore** — the persistence layer for user sessions, tasks,
-  conversation history, reminders, and focus sessions, so all data survives across
-  visits and devices.
-
-- **Google Secret Manager** — securely stores the Firebase service-account private
-  key, injected into Cloud Run at runtime rather than committed to source.
-
-- **Google OAuth 2.0** — secure, scoped authentication. Users sign in with Google to
-  grant Calendar access; no passwords are ever stored.
+![Deployment Pipeline](docs/diagrams/deployment.png)
+*Figure 5 — One-command deploy: build → Cloud Build → Cloud Run, with Secret Manager.*
 
 ---
 
-## How to Evaluate
+## 8. Innovation & Differentiation
 
-1. Open the deployed link: https://lastminute-ai-ummt2blwla-el.a.run.app
-2. Click **"Try live demo — no login"** to explore instantly, **or** **Sign in with
-   Google** for the full experience with your own calendar.
-3. On the dashboard, click **Plan my day** to watch Gemini build a plan, try
-   **Brain dump** to convert messy text into tasks, and open **Game Plan** to see the
-   ranked action queue.
+| Other tools | LastMinute AI |
+|---|---|
+| ChatGPT says “break it into smaller tasks” | **Creates the calendar block and sets the reminder for you** |
+| To-do apps store a list | **Tells you exactly what to do next, and schedules it** |
+| Reminders are passive and easy to ignore | **Escalates 24h → 2h → 1h → 30m, and acts while you sleep** |
+| You type every task | **Scan a syllabus photo or paste a brain-dump — Gemini does the rest** |
 
-*Note: signing in with a personal Google account shows a standard "unverified app"
-notice because the app uses sensitive Calendar scopes (Google verification takes
-several weeks). Demo Mode bypasses this entirely for evaluation.*
+The standout, *no other team is likely to build*: **Gemini Vision intake** (a photo
+becomes a plan) and **autonomous calendar scheduling** (the agent books your focus time
+itself).
+
+---
+
+## 9. Impact
+
+LastMinute AI targets the exact moment productivity tools fail people — the last-minute
+crunch — and changes the user's job from *organising* to *executing*. By combining a
+real calendar, an action-taking AI, and autonomous scheduling, it helps users make
+better decisions and actually finish on time. It is **fully deployed, functional, and
+usable today**, by anyone, with no setup.
+
+---
+
+## 10. How to Evaluate (2 minutes)
+
+1. Open **https://lastminute-ai-ummt2blwla-el.a.run.app**
+2. Click **“Try live demo — no login.”**
+3. On the dashboard: watch **Plan My Day** build a plan, try **Brain Dump** (paste any
+   messy text), open **Game Plan** to see the ranked queue, and check the **Activity
+   Feed** for the agent's autonomous actions.
+
+*Note: signing in with a personal Google account shows a standard “unverified app”
+notice because the app uses the sensitive Calendar scope (full Google verification takes
+weeks). **Demo Mode bypasses this entirely** so evaluation is frictionless.*
+
+---
+
+## 11. Roadmap
+
+- Per-user scheduled **morning planning** at 7 AM (server-side, via Cloud Scheduler)
+- **Gmail API** action-plan emails written by Gemini
+- Two-way **Google Tasks** sync
+- Autonomous **conflict resolution** (auto-reschedule when the day slips)
+
+---
+
+> **Other teams built an assistant you talk to. We built an agent that acts for you.**
