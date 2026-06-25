@@ -89,7 +89,10 @@ npm run dev   # http://localhost:5173
 
 ## Deployment
 
-Deployed to Google Cloud Run. See `_deploy_only.ps1` (reads `backend/.env`, builds with Cloud Build, deploys the container). Reference: https://ai.google.dev/gemini-api/docs/aistudio-deploying
+Deployed to Google Cloud Run with one command: `.\deploy.ps1` (builds the frontend,
+bundles it into the backend, and deploys via Cloud Build — reads `backend/.env`, no
+secrets hardcoded). Full architecture and deployment walkthrough in **[TECH_GUIDE.md](./TECH_GUIDE.md)**.
+Reference: https://ai.google.dev/gemini-api/docs/aistudio-deploying
 
 ---
 

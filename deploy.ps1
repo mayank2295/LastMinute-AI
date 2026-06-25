@@ -1,13 +1,24 @@
-# LastMinute AI — Cloud Run Deployment Script
-# Prerequisites: billing enabled, gcloud authenticated as mayankgupta23081@gmail.com
-# Run from repo root: .\deploy.ps1
+# ============================================================================
+#  LastMinute AI — One-command deploy to Google Cloud Run
+# ----------------------------------------------------------------------------
+#  Builds the React frontend, bundles it into the FastAPI backend, and deploys
+#  the container to Cloud Run. All secrets are read at runtime from backend/.env
+#  — none are hardcoded here.
 #
-# Reads secrets from backend/.env — never hardcodes them here.
+#  Prerequisites:
+#    - gcloud CLI installed & authenticated (gcloud auth login)
+#    - Billing enabled on the GCP project
+#    - backend/.env filled in (see backend/.env.example)
+#    - Firebase private key stored in Secret Manager as "firebase-private-key"
+#
+#  Usage (from repo root):   .\deploy.ps1
+# ============================================================================
 
-$GCLOUD = "C:\Program Files (x86)\Google\Cloud SDK\google-cloud-sdk\bin\gcloud.cmd"
-$PROJECT = "lastminuteai"
-$REGION  = "asia-south1"
-$SERVICE = "lastminute-ai"
+$PROJECT  = "lastminuteai"
+$REGION   = "asia-south1"
+$SERVICE  = "lastminute-ai"
+$URL      = "https://lastminute-ai-ummt2blwla-el.a.run.app"
+$GCLOUD   = "C:\Program Files (x86)\Google\Cloud SDK\google-cloud-sdk\bin\gcloud.cmd"
 $ENV_FILE = Join-Path $PSScriptRoot "backend\.env"
 
 if (-not (Test-Path $ENV_FILE)) {
@@ -15,7 +26,7 @@ if (-not (Test-Path $ENV_FILE)) {
     exit 1
 }
 
-# Parse .env into a hashtable
+# --- Parse backend/.env into a hashtable -----------------------------------
 $cfg = @{}
 foreach ($line in (Get-Content $ENV_FILE)) {
     if ($line -match '^\s*#' -or $line -notmatch '=') { continue }
@@ -23,65 +34,38 @@ foreach ($line in (Get-Content $ENV_FILE)) {
     $cfg[$k.Trim()] = $v.Trim().Trim('"')
 }
 
-Write-Host "=== LastMinute AI Deploy ===" -ForegroundColor Cyan
-
-# 1. Enable services
-Write-Host "`n[1/6] Enabling GCP services..."
-& $GCLOUD services enable run.googleapis.com cloudbuild.googleapis.com secretmanager.googleapis.com --project=$PROJECT
-
-# 2. Store Firebase private key as Secret (handles newlines safely)
-Write-Host "`n[2/6] Storing Firebase private key in Secret Manager..."
-$pk = $cfg["FIREBASE_PRIVATE_KEY"] -replace '\\n', "`n"
-$tmpFile = [System.IO.Path]::GetTempFileName()
-[System.IO.File]::WriteAllText($tmpFile, $pk, [System.Text.Encoding]::UTF8)
-& $GCLOUD secrets create firebase-private-key --data-file=$tmpFile --project=$PROJECT 2>&1
-if (-not $?) {
-    Write-Host "Secret exists — adding new version..."
-    & $GCLOUD secrets versions add firebase-private-key --data-file=$tmpFile --project=$PROJECT
-}
-Remove-Item $tmpFile
-
-# 3. Build frontend with production Cloud Run URL
-Write-Host "`n[3/6] Building frontend..."
-$CLOUD_RUN_URL = $cfg["FRONTEND_URL"]
-if ($CLOUD_RUN_URL -eq "http://localhost:5173" -or -not $CLOUD_RUN_URL) {
-    Write-Host "FRONTEND_URL is local — using placeholder. Update backend/.env after first deploy." -ForegroundColor Yellow
-    $CLOUD_RUN_URL = "https://$SERVICE-gul4q6dcia-el.a.run.app"
-}
-Set-Content "frontend\.env.production" "VITE_API_URL=$CLOUD_RUN_URL"
-Push-Location frontend
+# --- 1. Build the frontend and bundle it into the backend ------------------
+Write-Host "`n[1/2] Building frontend..." -ForegroundColor Cyan
+Push-Location (Join-Path $PSScriptRoot "frontend")
 npm run build
 Pop-Location
-if (Test-Path "backend\static") { Remove-Item -Recurse -Force "backend\static" }
-Copy-Item -Recurse "frontend\dist" "backend\static"
+$static = Join-Path $PSScriptRoot "backend\static"
+if (Test-Path $static) { Remove-Item -Recurse -Force $static }
+Copy-Item -Recurse (Join-Path $PSScriptRoot "frontend\dist") $static
 
-# 4. Grant Cloud Build permission to access secrets
-Write-Host "`n[4/6] Granting Secret Manager access to Cloud Build..."
-$PROJECT_NUM = (& $GCLOUD projects describe $PROJECT --format="value(projectNumber)" 2>&1)
-& $GCLOUD projects add-iam-policy-binding $PROJECT `
-    --member="serviceAccount:$PROJECT_NUM@cloudbuild.gserviceaccount.com" `
-    --role="roles/secretmanager.secretAccessor" 2>&1 | Select-Object -Last 2
-
-# 5. Deploy to Cloud Run
-Write-Host "`n[5/6] Deploying to Cloud Run..."
-$ENV_VARS = @(
+# --- 2. Deploy to Cloud Run ------------------------------------------------
+# PORT is reserved by Cloud Run — do NOT set it here.
+$envList = @(
     "GOOGLE_CLIENT_ID=$($cfg['GOOGLE_CLIENT_ID'])",
     "GOOGLE_CLIENT_SECRET=$($cfg['GOOGLE_CLIENT_SECRET'])",
-    "GOOGLE_REDIRECT_URI=$CLOUD_RUN_URL/api/auth/callback/google",
+    "GOOGLE_REDIRECT_URI=$URL/api/auth/callback/google",
     "FIREBASE_PROJECT_ID=$($cfg['FIREBASE_PROJECT_ID'])",
     "FIREBASE_CLIENT_EMAIL=$($cfg['FIREBASE_CLIENT_EMAIL'])",
     "VAPID_PUBLIC_KEY=$($cfg['VAPID_PUBLIC_KEY'])",
     "VAPID_PRIVATE_KEY=$($cfg['VAPID_PRIVATE_KEY'])",
     "VAPID_CLAIMS_EMAIL=$($cfg['VAPID_CLAIMS_EMAIL'])",
     "SECRET_KEY=$($cfg['SECRET_KEY'])",
-    "FRONTEND_URL=$CLOUD_RUN_URL",
-    "PORT=8080",
+    "FRONTEND_URL=$URL",
     "OAUTHLIB_RELAX_TOKEN_SCOPE=1",
-    "ANTHROPIC_API_KEY=$($cfg['ANTHROPIC_API_KEY'])"
+    "GEMINI_API_KEY=$($cfg['GEMINI_API_KEY'])"          # Google Gemini — the app's AI engine
 )
-$ENV_STRING = $ENV_VARS -join ","
+# Optional extras, only if present in .env
+if ($cfg['ANTHROPIC_API_KEY']) { $envList += "ANTHROPIC_API_KEY=$($cfg['ANTHROPIC_API_KEY'])" }  # secondary resilience fallback
+if ($cfg['CRON_SECRET'])       { $envList += "CRON_SECRET=$($cfg['CRON_SECRET'])" }
+$envVars = $envList -join ","
 
-Push-Location backend
+Write-Host "`n[2/2] Deploying to Cloud Run..." -ForegroundColor Cyan
+Push-Location (Join-Path $PSScriptRoot "backend")
 & $GCLOUD run deploy $SERVICE `
     --source . `
     --region $REGION `
@@ -89,17 +73,13 @@ Push-Location backend
     --allow-unauthenticated `
     --port 8080 `
     --memory 512Mi `
-    --set-env-vars $ENV_STRING `
+    --cpu 1 `
+    --min-instances 0 `
+    --max-instances 2 `
+    --concurrency 80 `
+    --quiet `
+    --set-env-vars $envVars `
     --set-secrets "FIREBASE_PRIVATE_KEY=firebase-private-key:latest"
 Pop-Location
 
-# 6. Get deployed URL
-Write-Host "`n[6/6] Getting service URL..."
-$URL = (& $GCLOUD run services describe $SERVICE --region=$REGION --project=$PROJECT --format="value(status.url)" 2>&1)
-Write-Host "`nDeployed at: $URL" -ForegroundColor Green
-Write-Host "`n=== NEXT STEPS ===" -ForegroundColor Cyan
-Write-Host "1. Go to console.cloud.google.com/apis/credentials"
-Write-Host "   Add authorized origin: $URL"
-Write-Host "   Add redirect URI: $URL/api/auth/callback/google"
-Write-Host "2. Update FRONTEND_URL and GOOGLE_REDIRECT_URI in backend/.env to: $URL"
-Write-Host "3. Re-run .\deploy.ps1 to rebuild frontend with correct URL and redeploy"
+Write-Host "`nDeployed: $URL" -ForegroundColor Green

@@ -38,3 +38,7 @@ Thumbs.db
 *.sqlite3
 .vscode/
 .idea/
+
+# generated
+deployed_url.txt
+frontend/.env.production
