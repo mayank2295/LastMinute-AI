@@ -45,3 +45,4 @@ frontend/.env.production
 
 # presentation binaries
 *.pptx
+*.docx
