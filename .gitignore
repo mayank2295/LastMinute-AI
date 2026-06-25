@@ -42,3 +42,6 @@ Thumbs.db
 # generated
 deployed_url.txt
 frontend/.env.production
+
+# presentation binaries
+*.pptx
