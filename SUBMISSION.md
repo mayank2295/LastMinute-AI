@@ -56,8 +56,8 @@ focus time in your free gaps, prioritises your tasks, and fires escalating remin
 autonomously, even when the app is closed. The entire product is **live and deployed on
 Google Cloud Run**, and anyone can try it instantly through a no-login **Demo Mode**.
 
-![System Architecture](docs/diagrams/architecture.png)
-*Figure 1 — System architecture: one Cloud Run container wired to Google services.*
+![UML Component & Deployment View](docs/diagrams/architecture.png)
+*Figure 1 — UML component & deployment view: the Google Cloud Run execution environment and its «external» Google services.*
 
 *Plain-English version of the diagram:* Your browser runs a fast web app. That talks to
 one program on Google Cloud Run. That program uses **Gemini** to think, the **Calendar
@@ -72,8 +72,8 @@ own. Every single piece is Google technology.
 
 ### For anyone — the user's journey
 
-![User Workflow](docs/diagrams/workflow.png)
-*Figure 2 — The user's journey from panic to plan.*
+![UML Activity Diagram](docs/diagrams/workflow.png)
+*Figure 2 — UML activity diagram: the flow from deadline panic to completion.*
 
 1. You're in a **deadline panic**.
 2. You **open the app** (or click Try Demo — no login).
@@ -88,8 +88,8 @@ The core of the product is **function calling**. Gemini isn't just generating te
 decides which real action to take, and our backend executes it. Here is exactly what
 happens when you say *"schedule my report tomorrow at 3 PM":*
 
-![Agent Sequence](docs/diagrams/agent_sequence.png)
-*Figure 3 — How the agent takes a real action via Gemini function calling.*
+![UML Sequence Diagram](docs/diagrams/agent_sequence.png)
+*Figure 3 — UML sequence diagram: an agentic action via Gemini function calling.*
 
 The message hits the API → the backend gives Gemini the user's context and a set of
 tools → Gemini **chooses** `create_calendar_event(...)` → the backend calls the **Google
@@ -141,8 +141,8 @@ you* — and it proves it three ways:
 - **Notifications:** Web Push API with VAPID
 - **Cloud / Infra:** Google Cloud Run, Google Cloud Build, Google Cloud Scheduler, Google Secret Manager
 
-![Data Model](docs/diagrams/data_model.png)
-*Figure 4 — The six Firestore collections that persist all app data.*
+![UML Class Diagram](docs/diagrams/data_model.png)
+*Figure 4 — UML class diagram: domain entities, service classes, the AIProvider interface, and the Priority enumeration.*
 
 ---
 
@@ -167,8 +167,8 @@ deep integration, not a logo on a slide.
 - **Google OAuth 2.0** — secure, scoped sign-in; users grant Calendar access and **no
   passwords are ever stored.**
 
-![Deployment Pipeline](docs/diagrams/deployment.png)
-*Figure 5 — One-command deploy: build → Cloud Build → Cloud Run, with Secret Manager.*
+![UML Deployment Diagram](docs/diagrams/deployment.png)
+*Figure 5 — UML deployment diagram: build-and-runtime topology (deploy.ps1 → Cloud Build → Cloud Run; Secret Manager injected at runtime).*
 
 ---
 
