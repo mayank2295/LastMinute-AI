@@ -7,6 +7,7 @@
 Built for the **BlockseBlock National Hackathon 2026** — PS1: The Last-Minute Life Saver
 
 **Live app:** https://lastminute-ai-ummt2blwla-el.a.run.app
+**Project Description (Google Doc):** https://docs.google.com/document/d/1z5qL-mFQ1diOUQeXJiTSeqDYk5I7xBLT/edit?usp=sharing
 **Try instantly:** click **"Try live demo — no login"** on the landing page.
 
 ---

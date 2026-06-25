@@ -6,11 +6,8 @@
 |---|---|
 | 🌐 **Live App** | https://lastminute-ai-ummt2blwla-el.a.run.app |
 | 💻 **GitHub** | https://github.com/mayank2295/LastMinute-AI |
+| 📄 **Project Description (Google Doc)** | https://docs.google.com/document/d/1z5qL-mFQ1diOUQeXJiTSeqDYk5I7xBLT/edit?usp=sharing |
 | ▶️ **Fastest way to evaluate** | Click **“Try live demo — no login”** on the landing page — full product, sample data, zero setup. |
-
-> **📄 To build the Google Doc:** paste this content into a Google Doc, then drag in the
-> 5 diagram images from the repo folder **`docs/diagrams/`** at each *Figure* spot.
-> They already render inline here on GitHub.
 
 ---
 
