@@ -45,7 +45,7 @@ def run_reminder_check() -> dict:
     AND from the in-process loop (works in local dev).
     Returns a summary of what was sent.
     """
-    sent = {"24h": 0, "2h": 0, "30m": 0}
+    sent = {"24h": 0, "2h": 0, "1h": 0, "30m": 0}
     try:
         pending = database.get_pending_reminders()
         now = datetime.now(timezone.utc)
@@ -84,6 +84,15 @@ def run_reminder_check() -> dict:
                     if sid:
                         database.log_activity(sid, f"Sent 2-hour warning for \"{task}\"", icon="bell")
                     sent["2h"] += 1
+
+                elif not r.get("reminder_1h_sent") and 0.75 <= hours <= 1.5:
+                    send_push(sub, f"⏳ 1 hour left: {task}",
+                              "Due in 1 hour — final stretch!",
+                              {"type": "1h", "deadline": dl_str})
+                    database.update_reminder_sent(doc_id, "1h")
+                    if sid:
+                        database.log_activity(sid, f"Sent 1-hour alert for \"{task}\"", icon="bell")
+                    sent["1h"] += 1
 
                 elif not r["reminder_30m_sent"] and 0.25 <= hours <= 0.75:
                     send_push(sub, f"🔴 FINAL WARNING: {task}",

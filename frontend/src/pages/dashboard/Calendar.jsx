@@ -11,7 +11,7 @@ function daysBetween(start, end) {
   return days
 }
 
-function EventRow({ ev }) {
+function EventRow({ ev, tz }) {
   const hasTime = ev.start_time?.includes('T')
   let h = null
   if (hasTime) {
@@ -21,6 +21,8 @@ function EventRow({ ev }) {
     : h < 0 ? 'bg-red-500' : h < 2 ? 'bg-red-400'
     : h < 24 ? 'bg-orange-400' : 'bg-green-400'
 
+  const fmt = (iso) => new Date(iso).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', timeZone: tz })
+
   return (
     <div className="flex items-start gap-3 py-2.5 border-b border-border last:border-0 group">
       <div className={`w-1 rounded-full self-stretch flex-shrink-0 ${barColor}`} style={{ minHeight: 24 }} />
@@ -29,8 +31,8 @@ function EventRow({ ev }) {
         {hasTime && (
           <p className="text-[11px] text-muted mt-0.5 flex items-center gap-1">
             <Clock className="w-3 h-3" />
-            {format(parseISO(ev.start_time), 'h:mm a')}
-            {ev.end_time?.includes('T') && ` – ${format(parseISO(ev.end_time), 'h:mm a')}`}
+            {fmt(ev.start_time)}
+            {ev.end_time?.includes('T') && ` – ${fmt(ev.end_time)}`}
           </p>
         )}
       </div>
@@ -44,7 +46,7 @@ function EventRow({ ev }) {
   )
 }
 
-function DaySection({ date, events }) {
+function DaySection({ date, events, tz }) {
   const label = isToday(date) ? 'Today' : isTomorrow(date) ? 'Tomorrow' : format(date, 'EEEE, MMMM d')
   return (
     <div className="mb-6">
@@ -56,7 +58,7 @@ function DaySection({ date, events }) {
       <div className="bg-white border border-border rounded-xl px-3">
         {events.length === 0
           ? <p className="text-xs text-muted py-3 italic">No events scheduled</p>
-          : events.map(ev => <EventRow key={ev.id} ev={ev} />)
+          : events.map(ev => <EventRow key={ev.id} ev={ev} tz={tz} />)
         }
       </div>
     </div>
@@ -64,7 +66,7 @@ function DaySection({ date, events }) {
 }
 
 export default function Calendar() {
-  const { user } = useAuth()
+  const { user, tz } = useAuth()
   const { data, isLoading, isError, refetch, isFetching } = useQuery({
     queryKey: ['calendar', user?.sessionId, 7],
     queryFn: () => getCalendarEvents(user.sessionId, 7),
@@ -110,7 +112,7 @@ export default function Calendar() {
       )}
 
       {!isLoading && !isError && byDay.map(({ date, events: evs }) => (
-        <DaySection key={date.toISOString()} date={date} events={evs} />
+        <DaySection key={date.toISOString()} date={date} events={evs} tz={tz} />
       ))}
     </div>
   )

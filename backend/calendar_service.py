@@ -4,6 +4,7 @@ os.environ.setdefault("OAUTHLIB_RELAX_TOKEN_SCOPE", "1")
 
 from datetime import datetime, timedelta, timezone
 from typing import List, Optional
+from zoneinfo import ZoneInfo
 
 from google.oauth2.credentials import Credentials
 from google.auth.transport.requests import Request
@@ -243,7 +244,10 @@ def create_calendar_event(
             "useDefault": False,
             "overrides": [
                 {"method": "popup", "minutes": reminder_minutes},
-                {"method": "email", "minutes": reminder_minutes * 2},
+                # Google sends an EMAIL reminder ~1 hour before — the "1 hour left" alert.
+                {"method": "email", "minutes": 60},
+                {"method": "popup", "minutes": 60},
+                {"method": "email", "minutes": max(reminder_minutes * 2, 120)},
             ],
         },
     }
@@ -272,7 +276,13 @@ def get_calendar_gaps(session_id: str, date: str, duration_minutes: int = 60) ->
 
     service = build("calendar", "v3", credentials=creds)
 
-    target    = datetime.fromisoformat(date).replace(tzinfo=timezone.utc)
+    # Working-hours window must be in the USER's timezone, not UTC, or
+    # auto-scheduled focus blocks land at the wrong local time.
+    try:
+        tz = ZoneInfo(database.get_user_timezone(session_id))
+    except Exception:
+        tz = timezone.utc
+    target    = datetime.fromisoformat(date).replace(tzinfo=tz)
     day_start = target.replace(hour=8,  minute=0, second=0, microsecond=0)
     day_end   = target.replace(hour=20, minute=0, second=0, microsecond=0)
 

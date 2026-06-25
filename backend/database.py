@@ -201,6 +201,7 @@ def save_reminder(session_id: str, task_title: str, deadline: str, push_subscrip
         "push_subscription": push_subscription,
         "reminder_24h_sent": False,
         "reminder_2h_sent": False,
+        "reminder_1h_sent": False,
         "reminder_30m_sent": False,
         "created_at": datetime.utcnow().isoformat(),
     })

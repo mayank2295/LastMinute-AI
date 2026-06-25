@@ -42,7 +42,7 @@ function borderColor(startTime) {
   } catch { return 'border-l-gray-200' }
 }
 
-function EventCard({ ev }) {
+function EventCard({ ev, tz }) {
   const [cd, setCd] = useState(() => countdown(ev.start_time))
 
   useEffect(() => {
@@ -52,6 +52,8 @@ function EventCard({ ev }) {
   }, [ev.start_time])
 
   const hasTime = ev.start_time?.includes('T')
+  // Render the wall-clock time in the user's calendar timezone so it matches Google Calendar.
+  const fmt = (iso) => new Date(iso).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', timeZone: tz })
 
   return (
     <div className={`bg-white border border-border border-l-4 ${borderColor(ev.start_time)} rounded-lg p-3`}>
@@ -61,8 +63,8 @@ function EventCard({ ev }) {
       </div>
       {hasTime && (
         <p className="text-[11px] text-muted mt-1">
-          {format(parseISO(ev.start_time), 'h:mm a')}
-          {ev.end_time?.includes('T') && ` – ${format(parseISO(ev.end_time), 'h:mm a')}`}
+          {fmt(ev.start_time)}
+          {ev.end_time?.includes('T') && ` – ${fmt(ev.end_time)}`}
         </p>
       )}
     </div>
@@ -70,7 +72,7 @@ function EventCard({ ev }) {
 }
 
 export default function DeadlineList() {
-  const { user } = useAuth()
+  const { user, tz } = useAuth()
   const { data, isLoading, isError, refetch, isFetching } = useQuery({
     queryKey: ['calendar', user?.sessionId, 7],
     queryFn: () => getCalendarEvents(user.sessionId, 7),
@@ -124,7 +126,7 @@ export default function DeadlineList() {
           <div key={label}>
             <p className="text-[10px] font-semibold uppercase tracking-widest text-muted mb-2">{label}</p>
             <div className="space-y-1.5">
-              {evs.map(ev => <EventCard key={ev.id} ev={ev} />)}
+              {evs.map(ev => <EventCard key={ev.id} ev={ev} tz={tz} />)}
             </div>
           </div>
         ))}

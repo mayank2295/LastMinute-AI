@@ -23,6 +23,8 @@ export function AuthProvider({ children }) {
       localStorage.setItem('lm_email',      email)
       localStorage.setItem('lm_name',       name)
       setUser({ sessionId: urlSid, email, name })
+      // Enrich with the user's real calendar timezone
+      getMe(urlSid).then(d => setUser(u => ({ ...u, timezone: d.timezone }))).catch(() => {})
       // Clean URL without triggering a navigation
       window.history.replaceState({}, '', window.location.pathname)
       setLoading(false)
@@ -39,6 +41,7 @@ export function AuthProvider({ children }) {
           sessionId: stored,
           email:     data.email,
           name:      data.name || localStorage.getItem('lm_name') || '',
+          timezone:  data.timezone,
         })
       })
       .catch(() => {
@@ -66,8 +69,13 @@ export function AuthProvider({ children }) {
 
   const isDemo = !!user?.sessionId?.startsWith('demo')
 
+  // Effective timezone for rendering event times so the app MATCHES Google Calendar.
+  // Prefer the user's real calendar timezone; fall back to the browser's.
+  const browserTz = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'
+  const tz = (user?.timezone && user.timezone !== 'UTC') ? user.timezone : browserTz
+
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout, isDemo }}>
+    <AuthContext.Provider value={{ user, loading, login, logout, isDemo, tz }}>
       {children}
     </AuthContext.Provider>
   )
