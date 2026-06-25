@@ -254,7 +254,8 @@ def save_focus_session(session_id: str, data: dict) -> dict:
         "task_id": data.get("task_id", ""),
         "task_title": data.get("task_title", ""),
         "duration_minutes": int(data.get("duration_minutes", 25)),
-        "completed_at": data.get("completed_at", datetime.utcnow().isoformat()),
+        # `or` (not default arg) so an explicit None becomes a real timestamp
+        "completed_at": data.get("completed_at") or datetime.utcnow().isoformat(),
         "created_at": datetime.utcnow().isoformat(),
     }
     db.collection("focus_sessions").document(doc_id).set(record)
@@ -300,10 +301,9 @@ def get_focus_sessions(session_id: str, date: Optional[str] = None) -> List[dict
     result = []
     for doc in docs:
         data = doc.to_dict()
-        if date:
-            completed = data.get("completed_at", "")
-            if not completed.startswith(date):
-                continue
+        completed = data.get("completed_at") or ""   # tolerate legacy null values
+        if date and not completed.startswith(date):
+            continue
         result.append(data)
-    result.sort(key=lambda r: r.get("completed_at", ""), reverse=True)
+    result.sort(key=lambda r: r.get("completed_at") or "", reverse=True)
     return result
