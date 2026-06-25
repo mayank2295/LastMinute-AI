@@ -6,7 +6,7 @@ from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from typing import Optional
 
-from fastapi import FastAPI, HTTPException, Query, Header
+from fastapi import FastAPI, HTTPException, Query, Header, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse, RedirectResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
@@ -180,6 +180,26 @@ async def push_subscribe(session_id: str, body: PushSubscribeRequest):
     """Store the browser push subscription on the session."""
     database.save_push_subscription(session_id, json.dumps(body.subscription))
     return {"success": True}
+
+
+@app.post("/api/vision/{session_id}")
+async def vision_extract(session_id: str, file: UploadFile = File(...)):
+    """Gemini Vision — extract tasks from an uploaded image (syllabus, timetable…)."""
+    if not demo_data.is_demo(session_id) and not database.get_session(session_id):
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    data = await file.read()
+    if not data:
+        raise HTTPException(status_code=400, detail="Empty file")
+    if len(data) > 8 * 1024 * 1024:
+        raise HTTPException(status_code=413, detail="Image too large (max 8 MB)")
+    mime = file.content_type or "image/png"
+    return await gemini_agent.parse_image_tasks(session_id, data, mime)
+
+
+@app.get("/api/activities/{session_id}")
+async def get_activities(session_id: str, limit: int = Query(default=20)):
+    """The agent's autonomous-action feed — proof of what it did on its own."""
+    return {"activities": database.get_activities(session_id, limit=limit)}
 
 
 # ─── Cron endpoints (driven by Google Cloud Scheduler) ────────────────────────

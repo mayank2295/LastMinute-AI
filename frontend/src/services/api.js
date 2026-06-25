@@ -21,8 +21,20 @@ export const getMe         = (sid)   => req('GET', `/api/me?session_id=${sid}`)
 export const startDemo     = ()      => req('POST', '/api/demo/start')
 
 // ─── Agentic ──────────────────────────────────────────────────────────────────
-export const planMyDay = (sid)        => req('POST', `/api/plan/${sid}`)
-export const brainDump = (sid, text)  => req('POST', `/api/braindump/${sid}`, { text })
+export const planMyDay     = (sid)        => req('POST', `/api/plan/${sid}`)
+export const brainDump     = (sid, text)  => req('POST', `/api/braindump/${sid}`, { text })
+export const getActivities = (sid, limit = 20) => req('GET', `/api/activities/${sid}?limit=${limit}`)
+
+export async function scanImage(sid, file) {
+  const fd = new FormData()
+  fd.append('file', file)
+  const resp = await fetch(`/api/vision/${sid}`, { method: 'POST', body: fd })
+  if (!resp.ok) {
+    const e = await resp.json().catch(() => ({ detail: resp.statusText }))
+    throw new Error(e.detail || 'Scan failed')
+  }
+  return resp.json()
+}
 
 // ─── Chat ─────────────────────────────────────────────────────────────────────
 export async function streamChat(message, sessionId, onChunk, onToolCalls, onDone) {

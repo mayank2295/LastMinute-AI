@@ -260,6 +260,35 @@ def save_focus_session(session_id: str, data: dict) -> dict:
     return record
 
 
+def log_activity(session_id: str, action: str, detail: str = "", icon: str = "bolt", meta: Optional[dict] = None):
+    """Record an autonomous/agent action so the user can SEE what the agent did."""
+    try:
+        doc_id = str(uuid.uuid4())
+        _db().collection("activities").document(doc_id).set({
+            "id": doc_id,
+            "session_id": session_id,
+            "action": action,
+            "detail": detail,
+            "icon": icon,
+            "meta": meta or {},
+            "created_at": datetime.utcnow().isoformat(),
+        })
+    except Exception as e:
+        print(f"[Activity] log failed: {e}")
+
+
+def get_activities(session_id: str, limit: int = 20) -> List[dict]:
+    docs = (
+        _db()
+        .collection("activities")
+        .where("session_id", "==", session_id)
+        .stream()
+    )
+    result = [d.to_dict() for d in docs]
+    result.sort(key=lambda a: a.get("created_at", ""), reverse=True)
+    return result[:limit]
+
+
 def get_focus_sessions(session_id: str, date: Optional[str] = None) -> List[dict]:
     docs = (
         _db()

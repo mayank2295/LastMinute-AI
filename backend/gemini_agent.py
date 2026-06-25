@@ -146,6 +146,8 @@ async def _execute(name: str, args: dict, session_id: str) -> dict:
                 description=args.get("description", ""),
                 reminder_minutes=int(args.get("reminder_minutes", 30)),
             )
+            database.log_activity(session_id, f"Added \"{args['title']}\" to your calendar",
+                                  args.get("start_time", "")[:16].replace("T", " "), icon="calendar")
             return {"success": True, **ev}
 
         if name == "get_upcoming_deadlines":
@@ -159,6 +161,8 @@ async def _execute(name: str, args: dict, session_id: str) -> dict:
             prioritized = task_engine.prioritize_tasks(raw)
             for t in prioritized:
                 database.save_task(session_id, t)
+            database.log_activity(session_id, f"Prioritised {len(prioritized)} task(s) into your Game Plan",
+                                  icon="list")
             return {"success": True, "prioritized_tasks": prioritized, "count": len(prioritized)}
 
         if name == "suggest_time_blocks":
@@ -178,6 +182,8 @@ async def _execute(name: str, args: dict, session_id: str) -> dict:
                     deadline=args["deadline"],
                     push_subscription=push_sub,
                 )
+            database.log_activity(session_id, f"Set escalating reminders for \"{args['task_title']}\"",
+                                  "24h / 2h / 30m before deadline", icon="bell")
             return {
                 "success": True,
                 "message": f"Escalating reminders set for '{args['task_title']}' at {args['deadline']}",
@@ -465,6 +471,13 @@ async def generate_daily_plan(session_id: str, auto_schedule: bool = True) -> di
             f"Start with your most urgent deadline and protect your focus time."
         )
 
+    if focus_block:
+        database.log_activity(session_id, f"Auto-scheduled focus time for \"{focus_block['task']}\"",
+                              "Planned your day from your calendar", icon="sparkles")
+    else:
+        database.log_activity(session_id, "Generated your daily plan",
+                              f"{len(events)} event(s), {len(tasks)} task(s)", icon="sparkles")
+
     return {
         "brief": brief,
         "events_today": len(events),
@@ -505,4 +518,40 @@ async def parse_braindump(session_id: str, text: str) -> dict:
         t["source"] = "ai"
         database.save_task(session_id, t)
 
+    database.log_activity(session_id, f"Extracted {len(prioritized)} task(s) from your brain dump",
+                          icon="brain")
     return {"tasks": prioritized, "count": len(prioritized), "provider": ai_provider.active_provider()}
+
+
+async def parse_image_tasks(session_id: str, image_bytes: bytes, mime_type: str) -> dict:
+    """
+    Google Gemini Vision: read a photo/screenshot (syllabus, assignment sheet,
+    whiteboard, timetable) and extract every deadline into structured tasks.
+    """
+    if not ai_provider.vision_available():
+        return {"tasks": [], "count": 0, "error": "Vision requires a Gemini API key."}
+
+    tz_name = database.get_user_timezone(session_id)
+    now_str, tz_name = _local_now_str(tz_name)
+    prompt = (
+        f"Current local time: {now_str} ({tz_name}).\n"
+        f"This image contains deadlines, assignments, a syllabus, a timetable, or a to-do list.\n"
+        f"Extract EVERY actionable task with a deadline. For each, give a title, a deadline as ISO "
+        f"local time (no timezone suffix; infer the year as the current or next occurrence), an "
+        f"importance score 0-10, and an effort estimate in minutes.\n"
+        f"Return ONLY a JSON array like:\n"
+        f'[{{"title":"...","deadline":"2026-06-30T17:00:00","importance_score":8,"effort_estimate":120}}]'
+    )
+    raw = await ai_provider.generate_from_image(prompt, image_bytes, mime_type)
+    parsed = _extract_json(raw)
+    if not isinstance(parsed, list) or not parsed:
+        return {"tasks": [], "count": 0, "error": "Couldn't read tasks from that image. Try a clearer photo."}
+
+    prioritized = task_engine.prioritize_tasks(parsed)
+    for t in prioritized:
+        t["source"] = "ai"
+        database.save_task(session_id, t)
+
+    database.log_activity(session_id, f"Scanned an image and extracted {len(prioritized)} task(s)",
+                          "Gemini Vision", icon="camera")
+    return {"tasks": prioritized, "count": len(prioritized), "provider": "gemini"}

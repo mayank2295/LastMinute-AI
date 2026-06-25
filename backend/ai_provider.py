@@ -53,7 +53,7 @@ async def generate(prompt: str, system: Optional[str] = None, max_tokens: int = 
         except Exception as e:
             print(f"[AI] Gemini generation failed, falling back: {e}")
 
-    # ── Claude fallback ──
+    # ── Claude fallback (text only) ──
     if _anthropic_client is not None:
         try:
             kwargs = {
@@ -69,3 +69,21 @@ async def generate(prompt: str, system: Optional[str] = None, max_tokens: int = 
             print(f"[AI] Claude generation failed: {e}")
 
     return ""
+
+
+def vision_available() -> bool:
+    return _gemini_model is not None
+
+
+async def generate_from_image(prompt: str, image_bytes: bytes, mime_type: str = "image/png") -> str:
+    """Multimodal extraction with Google Gemini Vision. Returns '' if unavailable."""
+    if _gemini_model is None:
+        return ""
+    try:
+        resp = await _gemini_model.generate_content_async(
+            [prompt, {"mime_type": mime_type, "data": image_bytes}]
+        )
+        return (resp.text or "").strip()
+    except Exception as e:
+        print(f"[AI] Gemini vision failed: {e}")
+        return ""

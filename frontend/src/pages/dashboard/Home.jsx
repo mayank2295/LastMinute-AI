@@ -4,11 +4,137 @@ import { useQueryClient, useQuery } from '@tanstack/react-query'
 import { useAuth } from '../../context/AuthContext'
 import DeadlineList from '../../components/DeadlineList'
 import ChatAgent from '../../components/ChatAgent'
-import { getBriefing, planMyDay, brainDump } from '../../services/api'
+import { getBriefing, planMyDay, brainDump, getActivities, scanImage } from '../../services/api'
 import {
   X, Zap, AlertTriangle, Clock, Sparkles, CalendarCheck,
-  Loader2, Brain, ExternalLink,
+  Loader2, Brain, ExternalLink, Camera, Activity,
+  Calendar, ListChecks, Bell, Upload,
 } from 'lucide-react'
+
+const ACT_ICON = { calendar: Calendar, list: ListChecks, bell: Bell, sparkles: Sparkles, brain: Brain, camera: Camera, bolt: Zap }
+
+function timeAgo(iso) {
+  const s = Math.floor((Date.now() - new Date(iso + (iso.endsWith('Z') ? '' : 'Z'))) / 1000)
+  if (s < 60) return 'just now'
+  if (s < 3600) return `${Math.floor(s / 60)}m ago`
+  if (s < 86400) return `${Math.floor(s / 3600)}h ago`
+  return `${Math.floor(s / 86400)}d ago`
+}
+
+/* ─── Agent Activity feed — visible proof the agent acts on its own ────────── */
+function ActivityFeed({ sessionId }) {
+  const { data } = useQuery({
+    queryKey: ['activities', sessionId],
+    queryFn: () => getActivities(sessionId, 8),
+    enabled: !!sessionId,
+    refetchInterval: 20_000,
+    select: d => d.activities || [],
+  })
+  const items = data || []
+  if (!items.length) return null
+  return (
+    <div className="bg-white border border-border rounded-xl p-4">
+      <div className="flex items-center gap-2 mb-3">
+        <Activity className="w-4 h-4 text-accent" />
+        <p className="text-sm font-semibold text-primary">Agent activity</p>
+        <span className="badge-green text-xs ml-auto">Autonomous</span>
+      </div>
+      <div className="space-y-2.5 max-h-56 overflow-y-auto">
+        {items.map(a => {
+          const Icon = ACT_ICON[a.icon] || Zap
+          return (
+            <div key={a.id} className="flex items-start gap-2.5">
+              <div className="w-6 h-6 rounded-lg bg-accent-light flex items-center justify-center flex-shrink-0 mt-0.5">
+                <Icon className="w-3 h-3 text-accent" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-medium text-primary leading-snug">{a.action}</p>
+                {a.detail && <p className="text-xs text-muted">{a.detail}</p>}
+              </div>
+              <span className="text-xs text-muted flex-shrink-0">{timeAgo(a.created_at)}</span>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+/* ─── Gemini Vision — scan a document into tasks ──────────────────────────── */
+function ScanModal({ sessionId, onClose, onDone }) {
+  const [loading, setLoad]  = useState(false)
+  const [result, setResult] = useState(null)
+  const [err, setErr]       = useState('')
+  const [preview, setPreview] = useState(null)
+
+  const onFile = async (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setPreview(URL.createObjectURL(file))
+    setLoad(true); setErr(''); setResult(null)
+    try {
+      const r = await scanImage(sessionId, file)
+      if (r.error) { setErr(r.error); setLoad(false); return }
+      setResult(r); onDone?.()
+    } catch (e) {
+      setErr(e.message || 'Scan failed')
+    } finally {
+      setLoad(false)
+    }
+  }
+
+  return (
+    <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
+      <div className="modal-box">
+        <div className="flex items-center justify-between px-6 pt-5 pb-4 border-b border-border">
+          <div className="flex items-center gap-2.5">
+            <Camera className="w-5 h-5 text-accent" />
+            <h2 className="text-lg font-semibold text-primary">Scan a document</h2>
+          </div>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><X className="w-5 h-5" /></button>
+        </div>
+        <div className="px-6 py-5 space-y-4">
+          {!result ? (
+            <>
+              <p className="text-sm text-muted">
+                Upload a photo or screenshot of a syllabus, assignment sheet, timetable, or to-do list.
+                <b> Google Gemini Vision</b> reads it and turns every deadline into a prioritised task.
+              </p>
+              <label className="flex flex-col items-center justify-center gap-2 border-2 border-dashed border-border rounded-xl py-8 cursor-pointer hover:border-accent transition-colors">
+                {preview
+                  ? <img src={preview} alt="preview" className="max-h-32 rounded-lg" />
+                  : <Upload className="w-8 h-8 text-gray-300" />}
+                <span className="text-sm text-muted">{loading ? 'Reading image…' : 'Click to upload an image'}</span>
+                <input type="file" accept="image/*" className="hidden" onChange={onFile} disabled={loading} />
+              </label>
+              {loading && <p className="text-xs text-accent flex items-center gap-1.5"><Loader2 className="w-3 h-3 animate-spin" /> Gemini is reading your document…</p>}
+              {err && <p className="text-xs text-red-500">{err}</p>}
+            </>
+          ) : (
+            <div>
+              <p className="text-sm font-medium text-primary mb-3">Found {result.count} task(s):</p>
+              <div className="space-y-1.5 max-h-64 overflow-y-auto">
+                {result.tasks.map((t, i) => (
+                  <div key={i} className="flex items-center gap-2.5 border border-border rounded-lg px-3 py-2">
+                    <div className={`w-2 h-2 rounded-full flex-shrink-0 ${
+                      t.priority === 'urgent_important' ? 'bg-red-500' :
+                      t.priority === 'urgent' ? 'bg-orange-500' :
+                      t.priority === 'important' ? 'bg-yellow-400' : 'bg-gray-300'}`} />
+                    <span className="flex-1 text-sm text-primary truncate">{t.title}</span>
+                    {t.deadline && <span className="badge-gray">{new Date(t.deadline).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+        <div className="flex items-center justify-end gap-3 px-6 pb-5">
+          <button onClick={onClose} className="btn-outline py-2 px-5 text-sm">{result ? 'Done' : 'Cancel'}</button>
+        </div>
+      </div>
+    </div>
+  )
+}
 
 /* ─── Plan My Day — the agentic showcase ──────────────────────────────────── */
 function PlanMyDay({ sessionId, isDemo, onTasksUpdated }) {
@@ -247,6 +373,7 @@ export default function Home() {
   const today = new Date().toDateString()
   const [showBrief, setShowBrief] = useState(() => localStorage.getItem(BRIEF_DISMISSED_KEY) !== today)
   const [showDump, setShowDump]   = useState(false)
+  const [showScan, setShowScan]   = useState(false)
 
   const dismissBrief = () => {
     localStorage.setItem(BRIEF_DISMISSED_KEY, today)
@@ -257,6 +384,7 @@ export default function Home() {
     qc.invalidateQueries({ queryKey: ['tasks',        user?.sessionId] })
     qc.invalidateQueries({ queryKey: ['productivity', user?.sessionId] })
     qc.invalidateQueries({ queryKey: ['calendar',     user?.sessionId] })
+    qc.invalidateQueries({ queryKey: ['activities',   user?.sessionId] })
   }
 
   return (
@@ -270,15 +398,26 @@ export default function Home() {
             <PlanMyDay sessionId={user.sessionId} isDemo={isDemo} onTasksUpdated={handleTasksUpdated} />
           )}
 
-          <button
-            onClick={() => setShowDump(true)}
-            data-tour="braindump"
-            className="btn-outline text-sm py-2.5 justify-center"
-          >
-            <Brain className="w-4 h-4" /> Brain dump
-          </button>
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              onClick={() => setShowDump(true)}
+              data-tour="braindump"
+              className="btn-outline text-sm py-2.5 justify-center"
+            >
+              <Brain className="w-4 h-4" /> Brain dump
+            </button>
+            <button
+              onClick={() => setShowScan(true)}
+              data-tour="scan"
+              className="btn-outline text-sm py-2.5 justify-center"
+            >
+              <Camera className="w-4 h-4" /> Scan
+            </button>
+          </div>
 
-          <div className="bg-white border border-border rounded-xl overflow-hidden flex-1 min-h-[200px]">
+          {user && <ActivityFeed sessionId={user.sessionId} />}
+
+          <div className="bg-white border border-border rounded-xl overflow-hidden flex-1 min-h-[180px]">
             <DeadlineList />
           </div>
         </div>
@@ -293,6 +432,13 @@ export default function Home() {
         <BrainDumpModal
           sessionId={user.sessionId}
           onClose={() => setShowDump(false)}
+          onDone={handleTasksUpdated}
+        />
+      )}
+      {showScan && user && (
+        <ScanModal
+          sessionId={user.sessionId}
+          onClose={() => setShowScan(false)}
           onDone={handleTasksUpdated}
         />
       )}

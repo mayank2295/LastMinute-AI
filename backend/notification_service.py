@@ -65,11 +65,15 @@ def run_reminder_check() -> dict:
                 task = r["task_title"]
                 doc_id = r["id"]  # Firestore document ID
 
+                sid = r.get("session_id", "")
+
                 if not r["reminder_24h_sent"] and 22 <= hours <= 26:
                     send_push(sub, f"⏰ 24h Reminder: {task}",
                               f"Deadline tomorrow at {dl.strftime('%I:%M %p')} UTC",
                               {"type": "24h", "deadline": dl_str})
                     database.update_reminder_sent(doc_id, "24h")
+                    if sid:
+                        database.log_activity(sid, f"Sent 24-hour reminder for \"{task}\"", icon="bell")
                     sent["24h"] += 1
 
                 elif not r["reminder_2h_sent"] and 1.5 <= hours <= 2.5:
@@ -77,6 +81,8 @@ def run_reminder_check() -> dict:
                               "Due in 2 hours — time to wrap up!",
                               {"type": "2h", "deadline": dl_str})
                     database.update_reminder_sent(doc_id, "2h")
+                    if sid:
+                        database.log_activity(sid, f"Sent 2-hour warning for \"{task}\"", icon="bell")
                     sent["2h"] += 1
 
                 elif not r["reminder_30m_sent"] and 0.25 <= hours <= 0.75:
@@ -84,6 +90,8 @@ def run_reminder_check() -> dict:
                               "30 minutes left — submit NOW!",
                               {"type": "30m", "deadline": dl_str})
                     database.update_reminder_sent(doc_id, "30m")
+                    if sid:
+                        database.log_activity(sid, f"Sent final 30-min warning for \"{task}\"", icon="bell")
                     sent["30m"] += 1
 
             except Exception as e:
