@@ -139,6 +139,34 @@ html.dark .theme-toggle { border-color:#3f3f46; color:#fbbf24; }
 }
 html.dark .tour-tooltip { background:#18181b; color:#f4f4f5; box-shadow:0 20px 60px rgba(0,0,0,0.7); }
 
+/* ─── Landing background effects ─────────────────────────────────────────── */
+.lp-blob {
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(80px);
+  pointer-events: none;
+  will-change: transform;
+  animation: blobFloat 16s ease-in-out infinite;
+}
+@keyframes blobFloat {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33%      { transform: translate(40px, -30px) scale(1.08); }
+  66%      { transform: translate(-30px, 25px) scale(0.95); }
+}
+/* faint moving grid for the hero */
+.lp-grid {
+  position: absolute; inset: 0; pointer-events: none;
+  background-image:
+    linear-gradient(to right, currentColor 1px, transparent 1px),
+    linear-gradient(to bottom, currentColor 1px, transparent 1px);
+  background-size: 56px 56px;
+  -webkit-mask-image: radial-gradient(ellipse 70% 55% at 50% 30%, #000 0%, transparent 75%);
+          mask-image: radial-gradient(ellipse 70% 55% at 50% 30%, #000 0%, transparent 75%);
+  animation: gridDrift 40s linear infinite;
+}
+@keyframes gridDrift { from { background-position: 0 0; } to { background-position: 56px 56px; } }
+@keyframes floatY { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+
 /* Status bar */
 .status-bar {
   height: 36px;
