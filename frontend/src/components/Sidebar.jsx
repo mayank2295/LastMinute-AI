@@ -29,8 +29,8 @@ const SECTIONS = [
   {
     label: 'ACCOUNT',
     items: [
-      { to: '/dashboard/guide',        icon: BookOpen,    label: 'User Guide' },
-      { to: '/dashboard/settings',     icon: Settings,    label: 'Settings' },
+      { to: '/dashboard/guide',        icon: BookOpen,    label: 'User Guide', dataTour: 'guide' },
+      { to: '/dashboard/settings',     icon: Settings,    label: 'Settings',   dataTour: 'settings' },
     ],
   },
 ]
@@ -44,6 +44,7 @@ function NavItem({ item, taskCount, reminderCount }) {
     <NavLink
       to={item.to}
       end={item.to === '/dashboard'}
+      data-tour={item.dataTour}
       className={({ isActive }) => `${base} ${isActive ? active : inactive}`}
     >
       <item.icon className="w-4.5 h-4.5 flex-shrink-0" style={{ width: 18, height: 18 }} />

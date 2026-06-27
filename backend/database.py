@@ -87,6 +87,23 @@ def get_user_timezone(session_id: str) -> str:
     return "UTC"
 
 
+def get_refresh_token_for_user(email: str) -> str:
+    """Return a previously stored refresh token for this user (by email), so a
+    returning user can sign in without being forced through the consent screen
+    (which Google requires to re-issue a refresh token)."""
+    if not email:
+        return ""
+    try:
+        docs = _db().collection("sessions").where("user_id", "==", email).stream()
+        for d in docs:
+            rt = d.to_dict().get("refresh_token")
+            if rt:
+                return rt
+    except Exception as e:
+        logger.info(f"[Auth] Could not look up refresh token for {email}: {e}")
+    return ""
+
+
 def save_push_subscription(session_id: str, subscription: str):
     """Store the browser push subscription on the session so the agent can
     set reminders without the LLM needing to know the subscription."""

@@ -30,6 +30,7 @@ export default function UserMenu() {
     <div className="relative" ref={ref}>
       <button
         onClick={() => setOpen(o => !o)}
+        data-tour="usermenu"
         className="flex items-center gap-1 rounded-full focus:outline-none focus:ring-2 focus:ring-accent-border hover:opacity-90 transition"
         title="Account"
         aria-haspopup="true"

@@ -56,7 +56,11 @@ def get_auth_url(session_id: str, redirect_uri: Optional[str] = None) -> str:
         access_type="offline",
         include_granted_scopes="true",
         state=session_id,
-        prompt="consent",
+        # "select_account" (not "consent") so returning users who already granted
+        # access are NOT forced through the consent screen again — they sign in
+        # smoothly with no "unverified app" warning. We reuse their stored refresh
+        # token (by email) when Google doesn't re-issue one. See handle_oauth_callback.
+        prompt="select_account",
     )
     return auth_url
 
@@ -72,6 +76,12 @@ def handle_oauth_callback(code: str, session_id: str, redirect_uri: Optional[str
 
     service = build("oauth2", "v2", credentials=creds)
     user_info = service.userinfo().get().execute()
+    email = user_info.get("email", "")
+
+    # When a returning user signs in without the consent prompt, Google does NOT
+    # re-issue a refresh token — so fall back to the one we stored on a prior login,
+    # keeping the session refreshable without forcing the consent screen.
+    refresh_token = creds.refresh_token or database.get_refresh_token_for_user(email)
 
     # Capture the user's real Google Calendar timezone so every event we create
     # lands at the correct local time (not hardcoded UTC).
@@ -90,18 +100,18 @@ def handle_oauth_callback(code: str, session_id: str, redirect_uri: Optional[str
 
     database.save_session(
         session_id=session_id,
-        user_id=user_info.get("email", ""),
+        user_id=email,
         access_token=creds.token,
-        refresh_token=creds.refresh_token or "",
+        refresh_token=refresh_token,
         token_expiry=creds.expiry.isoformat() if creds.expiry else "",
         name=user_info.get("name", ""),
         timezone_name=user_tz,
         picture=user_info.get("picture", ""),
     )
 
-    logger.info(f"[OAuth] Session saved for {user_info.get('email')} with session_id={session_id[:8]}...")
+    logger.info(f"[OAuth] Session saved for {email} with session_id={session_id[:8]}...")
     return {
-        "email": user_info.get("email", ""),
+        "email": email,
         "name": user_info.get("name", ""),
         "timezone": user_tz,
         "picture": user_info.get("picture", ""),

@@ -23,6 +23,10 @@ const DASHBOARD_TOUR = [
     body: 'Ask it anything: "schedule my report tomorrow at 3 PM" and it actually does it.' },
   { selector: '[data-tour="score"]', title: 'Your productivity score',
     body: 'A live score from your completion rate, focus sessions, and calendar load. Aim for 70+.' },
+  { selector: '[data-tour="guide"]', title: 'New here? Open the User Guide',
+    body: 'A full how-to manual explaining every feature and the purpose of the app — open it anytime you feel lost.' },
+  { selector: '[data-tour="usermenu"]', title: 'Profile & Settings',
+    body: 'Click your photo for Settings (theme, notifications), the User Guide, and sign out. Your Google name and photo appear here.' },
 ]
 
 const PAGE_TITLES = {
