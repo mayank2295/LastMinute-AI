@@ -110,12 +110,25 @@ def seed_demo_goals_habits():
             "motivation": spec["motivation"],
             "milestones": [{"text": m, "done": i == 0} for i, m in enumerate(spec["milestones"])],
         })
-    yesterday = (now - timedelta(days=1)).date().isoformat()
+    today = now.date()
+    yesterday = (today - timedelta(days=1)).isoformat()
+    span = 28
     for spec in _DEMO_HABITS:
+        streak = spec["streak"]
+        dates = []
+        # current run ending yesterday (so the user can extend it by checking in today)
+        for i in range(1, streak + 1):
+            dates.append((today - timedelta(days=i)).isoformat())
+        # older history with gaps so the calendar shows both 🔥 and 😭
+        for i in range(streak + 2, span):
+            if i % 3 != 0:
+                dates.append((today - timedelta(days=i)).isoformat())
         database.save_habit(DEMO_SESSION_ID, {
             "title": spec["title"],
-            "current_streak": spec["streak"],
-            "longest_streak": spec["streak"],
-            "total_checkins": spec["streak"],
-            "last_checkin": yesterday,   # so the demo user can check in today
+            "current_streak": streak,
+            "longest_streak": max(streak, 9),
+            "total_checkins": len(dates),
+            "last_checkin": yesterday,
+            "checkin_dates": dates,
+            "created_at": (now - timedelta(days=span)).isoformat(),
         })

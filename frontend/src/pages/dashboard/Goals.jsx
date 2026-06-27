@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Target, Flame, Plus, Trash2, Sparkles, Check, CalendarDays } from 'lucide-react'
+import { Target, Flame, Plus, Trash2, Sparkles, Check, CalendarDays, ChevronDown } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
+import StreakCalendar from '../../components/StreakCalendar'
 import {
   getGoals, createGoal, updateGoal, deleteGoal, breakdownGoal,
   getHabits, createHabit, checkinHabit, deleteHabit,
@@ -121,29 +122,36 @@ function AddGoal({ sid, qc }) {
 }
 
 // ─── Habits ─────────────────────────────────────────────────────────────────
-function HabitRow({ habit, sid, qc }) {
+function HabitRow({ habit, sid, qc, defaultOpen = false }) {
   const inval = () => qc.invalidateQueries({ queryKey: ['habits', sid] })
+  const [open, setOpen] = useState(defaultOpen)
   const doneToday = habit.last_checkin === todayUTC()
   const checkin = useMutation({ mutationFn: () => checkinHabit(sid, habit.id), onSuccess: inval })
   const remove  = useMutation({ mutationFn: () => deleteHabit(sid, habit.id), onSuccess: inval })
 
   return (
-    <div className="bg-white border border-border rounded-xl p-4 flex items-center gap-3">
-      <div className="flex items-center gap-1.5 w-16 flex-shrink-0">
-        <Flame className={`w-5 h-5 ${habit.current_streak > 0 ? 'text-orange-500' : 'text-gray-300'}`} />
-        <span className="font-bold text-primary">{habit.current_streak || 0}</span>
+    <div className="bg-white border border-border rounded-xl p-4">
+      <div className="flex items-center gap-3">
+        <button onClick={() => setOpen(o => !o)} className="flex items-center gap-1.5 w-16 flex-shrink-0" title="View streak calendar">
+          <Flame className={`w-5 h-5 ${habit.current_streak > 0 ? 'text-orange-500' : 'text-gray-300'}`} />
+          <span className="font-bold text-primary">{habit.current_streak || 0}</span>
+        </button>
+        <button onClick={() => setOpen(o => !o)} className="flex-1 min-w-0 text-left">
+          <p className="text-sm font-medium text-primary truncate flex items-center gap-1">
+            {habit.title}
+            <ChevronDown className={`w-3.5 h-3.5 text-muted transition-transform ${open ? 'rotate-180' : ''}`} />
+          </p>
+          <p className="text-xs text-muted">Best streak: {habit.longest_streak || 0} · {habit.total_checkins || 0} total</p>
+        </button>
+        <button onClick={() => !doneToday && checkin.mutate()} disabled={doneToday || checkin.isPending}
+          className={`text-sm font-medium px-3 py-1.5 rounded-lg flex items-center gap-1.5 flex-shrink-0 ${doneToday ? 'bg-accent-light text-accent-text border border-accent-border' : 'btn-primary'}`}>
+          <Check className="w-3.5 h-3.5" /> {doneToday ? 'Done today' : 'Mark done'}
+        </button>
+        <button onClick={() => remove.mutate()} className="text-gray-400 hover:text-red-500 flex-shrink-0" title="Delete habit">
+          <Trash2 className="w-4 h-4" />
+        </button>
       </div>
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium text-primary truncate">{habit.title}</p>
-        <p className="text-xs text-muted">Best streak: {habit.longest_streak || 0} · {habit.total_checkins || 0} total</p>
-      </div>
-      <button onClick={() => !doneToday && checkin.mutate()} disabled={doneToday || checkin.isPending}
-        className={`text-sm font-medium px-3 py-1.5 rounded-lg flex items-center gap-1.5 flex-shrink-0 ${doneToday ? 'bg-accent-light text-accent-text border border-accent-border' : 'btn-primary'}`}>
-        <Check className="w-3.5 h-3.5" /> {doneToday ? 'Done today' : 'Mark done'}
-      </button>
-      <button onClick={() => remove.mutate()} className="text-gray-400 hover:text-red-500 flex-shrink-0" title="Delete habit">
-        <Trash2 className="w-4 h-4" />
-      </button>
+      {open && <StreakCalendar dates={habit.checkin_dates || []} startDate={habit.created_at} />}
     </div>
   )
 }
@@ -199,7 +207,7 @@ export default function Goals() {
         </div>
         <p className="text-sm text-muted mb-4">Build momentum — check in daily and keep your streak alive.</p>
         <div className="space-y-3">
-          {habits.map(h => <HabitRow key={h.id} habit={h} sid={sid} qc={qc} />)}
+          {habits.map((h, i) => <HabitRow key={h.id} habit={h} sid={sid} qc={qc} defaultOpen={i === 0} />)}
           <AddHabit sid={sid} qc={qc} />
         </div>
       </section>

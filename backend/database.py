@@ -391,6 +391,7 @@ def save_habit(session_id: str, habit: dict) -> dict:
         "longest_streak": habit.get("longest_streak", 0),
         "total_checkins": habit.get("total_checkins", 0),
         "last_checkin": habit.get("last_checkin", ""),
+        "checkin_dates": habit.get("checkin_dates", []),   # full history for the streak calendar
         "created_at": habit.get("created_at", datetime.utcnow().isoformat()),
     }
     _db().collection("habits").document(habit_id).set(data, merge=True)
@@ -418,11 +419,15 @@ def checkin_habit(habit_id: str, session_id: str) -> Optional[dict]:
         return h  # already checked in today — no double counting
     yesterday_str = (today - timedelta(days=1)).isoformat()
     streak = (h.get("current_streak", 0) + 1) if last == yesterday_str else 1
+    dates = h.get("checkin_dates", [])
+    if today_str not in dates:
+        dates = [*dates, today_str]
     updates = {
         "current_streak": streak,
         "longest_streak": max(h.get("longest_streak", 0), streak),
         "total_checkins": h.get("total_checkins", 0) + 1,
         "last_checkin": today_str,
+        "checkin_dates": dates,
     }
     doc_ref.update(updates)
     return {**h, **updates}
