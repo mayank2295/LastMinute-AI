@@ -5,7 +5,7 @@ import Sidebar from '../../components/Sidebar'
 import ThemeToggle from '../../components/ThemeToggle'
 import UserMenu from '../../components/UserMenu'
 import Tour from '../../components/Tour'
-import { Menu, TrendingUp, HelpCircle } from 'lucide-react'
+import { Menu, TrendingUp, HelpCircle, PanelLeft } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { getProductivity, getCalendarEvents } from '../../services/api'
 import { registerServiceWorker } from '../../services/notifications'
@@ -153,7 +153,13 @@ export default function DashboardLayout() {
     document.addEventListener('mouseup', onUp)
   }
 
+  // Collapse-to-icons (persisted). When collapsed the rail is a fixed 68px.
+  const [collapsed, setCollapsed] = useState(() => localStorage.getItem('lm_sidebar_collapsed') === '1')
+  const toggleCollapsed = () => setCollapsed(c => { localStorage.setItem('lm_sidebar_collapsed', c ? '0' : '1'); return !c })
+  const effectiveWidth = collapsed ? 68 : sidebarWidth
+
   const title      = PAGE_TITLES[location.pathname] || 'Dashboard'
+  const firstName  = (user?.name || '').split(' ')[0]
   const score      = prodData?.score
   const scoreColor = score >= 70 ? 'text-accent bg-accent-light border-accent-border'
                    : score >= 40 ? 'text-orange-700 bg-orange-50 border-orange-200'
@@ -162,14 +168,16 @@ export default function DashboardLayout() {
   return (
     <div className="h-screen flex overflow-hidden bg-surface">
       {/* Sidebar — desktop (resizable) */}
-      <div className="hidden md:flex flex-shrink-0 relative" data-tour="sidebar" style={{ width: sidebarWidth }}>
-        <Sidebar />
-        {/* Drag handle */}
-        <div
-          onMouseDown={startResize}
-          title="Drag to resize"
-          className="absolute top-0 right-0 h-full w-1.5 cursor-col-resize hover:bg-accent/40 active:bg-accent/60 transition-colors"
-        />
+      <div className="hidden md:flex flex-shrink-0 relative" data-tour="sidebar" style={{ width: effectiveWidth }}>
+        <Sidebar collapsed={collapsed} />
+        {/* Drag handle (hidden when collapsed) */}
+        {!collapsed && (
+          <div
+            onMouseDown={startResize}
+            title="Drag to resize"
+            className="absolute top-0 right-0 h-full w-1.5 cursor-col-resize hover:bg-accent/40 active:bg-accent/60 transition-colors"
+          />
+        )}
       </div>
 
       {/* Sidebar — mobile overlay */}
@@ -185,14 +193,23 @@ export default function DashboardLayout() {
       {/* Main area */}
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Top bar */}
-        <header className="h-[56px] flex-shrink-0 flex items-center justify-between px-5 bg-white border-b border-border">
-          <div className="flex items-center gap-3">
-            <button className="md:hidden p-1.5 rounded-lg hover:bg-subtle" onClick={() => setSidebarOpen(true)}>
+        <header className="h-[60px] flex-shrink-0 flex items-center justify-between px-5 bg-white border-b border-border">
+          <div className="flex items-center gap-2">
+            <button className="md:hidden p-1.5 rounded-lg hover:bg-subtle" onClick={() => setSidebarOpen(true)} title="Menu">
               <Menu className="w-5 h-5 text-muted" />
             </button>
-            <h1 className="font-bold text-base text-primary">{title}</h1>
+            <button className="hidden md:inline-flex theme-toggle" onClick={toggleCollapsed}
+              title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}>
+              <PanelLeft className="w-4 h-4" />
+            </button>
+            <h1 className="font-bold text-lg text-primary ml-1">{title}</h1>
           </div>
           <div className="flex items-center gap-2.5">
+            {firstName && (
+              <span className="hidden sm:block text-sm text-muted mr-1">
+                Welcome, <span className="font-semibold text-primary">{firstName}</span>
+              </span>
+            )}
             {score != null && (
               <span data-tour="score" className={`inline-flex items-center gap-1.5 text-sm font-medium px-3 py-1.5 rounded-full border ${scoreColor}`}>
                 <TrendingUp className="w-3.5 h-3.5" />

@@ -137,7 +137,7 @@ export default function FocusTimer() {
       {/* Left — Timer */}
       <div className="flex-1 flex flex-col gap-4">
         {/* Mode selector */}
-        <div className="bg-white border border-border rounded-xl p-4">
+        <div className="bg-white border border-border rounded-2xl shadow-sm p-4">
           {!running && (
             <div className="flex gap-2 mb-5">
               {MODES.map((m, i) => (
@@ -208,7 +208,7 @@ export default function FocusTimer() {
         </div>
 
         {/* Task selector */}
-        <div className="bg-white border border-border rounded-xl p-4">
+        <div className="bg-white border border-border rounded-2xl shadow-sm p-4">
           <p className="text-xs font-semibold text-primary uppercase tracking-wide mb-3">Working on</p>
           {tasks.length === 0 ? (
             <p className="text-sm text-muted">No active tasks — add one from My Tasks.</p>
@@ -240,7 +240,7 @@ export default function FocusTimer() {
 
       {/* Right — History */}
       <div className="w-full lg:w-72 flex flex-col gap-4">
-        <div className="bg-white border border-border rounded-xl p-4">
+        <div className="bg-white border border-border rounded-2xl shadow-sm p-4">
           <p className="text-xs font-semibold text-primary uppercase tracking-wide mb-3">Today's sessions</p>
 
           {/* Stats */}

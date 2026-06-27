@@ -34,7 +34,7 @@ export default function Login() {
         ← Back to home
       </Link>
 
-      <div className="w-full max-w-[360px] bg-white border border-border rounded-xl p-8">
+      <div className="w-full max-w-[360px] bg-white border border-border rounded-2xl shadow-sm p-8">
         {/* Logo */}
         <div className="flex justify-center mb-5">
           <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center">

@@ -8,7 +8,7 @@ import Avatar from '../../components/Avatar'
 
 function Card({ title, desc, children }) {
   return (
-    <section className="bg-white border border-border rounded-2xl p-5 sm:p-6">
+    <section className="bg-white border border-border rounded-2xl shadow-sm p-5 sm:p-6">
       <h2 className="text-base font-bold text-primary">{title}</h2>
       {desc && <p className="text-sm text-muted mt-0.5 mb-4">{desc}</p>}
       <div className={desc ? '' : 'mt-4'}>{children}</div>

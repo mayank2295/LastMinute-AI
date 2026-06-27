@@ -35,7 +35,7 @@ function GoalCard({ goal, sid, qc }) {
   })
 
   return (
-    <div className="bg-white border border-border rounded-2xl p-5">
+    <div className="bg-white border border-border rounded-2xl shadow-sm p-5">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <h3 className="font-bold text-primary">{goal.title}</h3>
@@ -102,7 +102,7 @@ function AddGoal({ sid, qc }) {
   )
   return (
     <form onSubmit={e => { e.preventDefault(); if (title.trim()) add.mutate() }}
-      className="bg-white border border-border rounded-2xl p-4 space-y-2">
+      className="bg-white border border-border rounded-2xl shadow-sm p-4 space-y-2">
       <input autoFocus value={title} onChange={e => setTitle(e.target.value)} placeholder="What do you want to achieve?"
         className="w-full text-sm bg-transparent border border-border rounded-lg px-3 py-2 text-primary" />
       <div className="flex gap-2">
@@ -130,7 +130,7 @@ function HabitRow({ habit, sid, qc, defaultOpen = false }) {
   const remove  = useMutation({ mutationFn: () => deleteHabit(sid, habit.id), onSuccess: inval })
 
   return (
-    <div className="bg-white border border-border rounded-xl p-4">
+    <div className="bg-white border border-border rounded-2xl shadow-sm p-4">
       <div className="flex items-center gap-3">
         <button onClick={() => setOpen(o => !o)} className="flex items-center gap-1.5 w-16 flex-shrink-0" title="View streak calendar">
           <Flame className={`w-5 h-5 ${habit.current_streak > 0 ? 'text-orange-500' : 'text-gray-300'}`} />

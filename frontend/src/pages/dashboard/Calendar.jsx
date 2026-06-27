@@ -55,7 +55,7 @@ function DaySection({ date, events, tz }) {
         {isToday(date) && <span className="badge-green text-[10px] px-1.5 py-0">Today</span>}
         <span className="ml-auto text-[10px] text-muted">{events.length} event{events.length !== 1 ? 's' : ''}</span>
       </div>
-      <div className="bg-white border border-border rounded-xl px-3">
+      <div className="bg-white border border-border rounded-2xl shadow-sm px-3">
         {events.length === 0
           ? <p className="text-xs text-muted py-3 italic">No events scheduled</p>
           : events.map(ev => <EventRow key={ev.id} ev={ev} tz={tz} />)

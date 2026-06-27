@@ -33,7 +33,7 @@ function ActivityFeed({ sessionId }) {
   const items = data || []
   if (!items.length) return null
   return (
-    <div className="bg-white border border-border rounded-xl p-4">
+    <div className="bg-white border border-border rounded-2xl shadow-sm p-4">
       <div className="flex items-center gap-2 mb-3">
         <Activity className="w-4 h-4 text-accent" />
         <p className="text-sm font-semibold text-primary">Agent activity</p>
@@ -169,7 +169,7 @@ function PlanMyDay({ sessionId, isDemo, onTasksUpdated }) {
   }, [sessionId])
 
   return (
-    <div className="bg-white border border-border rounded-xl p-4" data-tour="plan">
+    <div className="bg-white border border-border rounded-2xl shadow-sm p-4" data-tour="plan">
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div className="flex items-center gap-2.5">
           <div className="w-8 h-8 rounded-lg bg-accent-light flex items-center justify-center flex-shrink-0">
@@ -339,7 +339,7 @@ function MorningBrief({ sessionId, onDismiss }) {
   const urgentCount = (critical_count || 0) + (high_count || 0)
 
   return (
-    <div className="flex-shrink-0 bg-white border border-border rounded-xl px-4 py-3 flex items-center gap-4">
+    <div className="flex-shrink-0 bg-white border border-border rounded-2xl shadow-sm px-4 py-3 flex items-center gap-4">
       <div className="w-8 h-8 rounded-lg bg-accent-light flex items-center justify-center flex-shrink-0">
         <Zap className="w-4 h-4 text-accent" />
       </div>
@@ -417,7 +417,7 @@ export default function Home() {
 
           {user && <ActivityFeed sessionId={user.sessionId} />}
 
-          <div className="bg-white border border-border rounded-xl overflow-hidden flex-1 min-h-[180px]">
+          <div className="bg-white border border-border rounded-2xl shadow-sm overflow-hidden flex-1 min-h-[180px]">
             <DeadlineList />
           </div>
         </div>

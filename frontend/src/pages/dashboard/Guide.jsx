@@ -56,7 +56,7 @@ export default function Guide() {
         <h2 className="text-base font-bold text-primary mb-3">Quick start</h2>
         <div className="space-y-3">
           {STEPS.map(s => (
-            <div key={s.n} className="flex gap-3 bg-white border border-border rounded-xl p-4">
+            <div key={s.n} className="flex gap-3 bg-white border border-border rounded-2xl shadow-sm p-4">
               <div className="w-7 h-7 rounded-full bg-accent text-white text-sm font-bold flex items-center justify-center flex-shrink-0">{s.n}</div>
               <div>
                 <p className="text-sm font-semibold text-primary">{s.title}</p>
@@ -72,7 +72,7 @@ export default function Guide() {
         <h2 className="text-base font-bold text-primary mb-3">Features</h2>
         <div className="space-y-3">
           {FEATURES.map(f => (
-            <div key={f.name} className="bg-white border border-border rounded-xl p-4">
+            <div key={f.name} className="bg-white border border-border rounded-2xl shadow-sm p-4">
               <div className="flex items-center gap-2.5 mb-1.5">
                 <f.icon className="w-4.5 h-4.5 text-accent" style={{ width: 18, height: 18 }} />
                 <h3 className="text-sm font-bold text-primary">{f.name}</h3>
@@ -85,7 +85,7 @@ export default function Guide() {
       </section>
 
       {/* Footer note */}
-      <section className="bg-white border border-border rounded-2xl p-5 flex items-start gap-3">
+      <section className="bg-white border border-border rounded-2xl shadow-sm p-5 flex items-start gap-3">
         <PlayCircle className="w-5 h-5 text-accent flex-shrink-0 mt-0.5" />
         <div>
           <p className="text-sm font-semibold text-primary">New here? Take the guided tour.</p>

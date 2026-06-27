@@ -16,7 +16,7 @@ function ReminderRow({ r }) {
   ]
 
   return (
-    <div className="bg-white border border-border rounded-xl p-4">
+    <div className="bg-white border border-border rounded-2xl shadow-sm p-4">
       <div className="flex items-start justify-between gap-3 mb-3">
         <div>
           <p className="text-sm font-semibold text-primary">{r.task_title}</p>

@@ -71,7 +71,7 @@ export default function Productivity() {
   return (
     <div className="p-6 max-w-2xl space-y-4">
       {/* Score card */}
-      <div className="bg-white border border-border rounded-xl p-6 flex flex-col sm:flex-row items-center gap-6">
+      <div className="bg-white border border-border rounded-2xl shadow-sm p-6 flex flex-col sm:flex-row items-center gap-6">
         <ScoreGauge score={score} />
         <div className="flex-1">
           <p className="text-sm font-semibold text-primary mb-1">Today's productivity score</p>
@@ -90,7 +90,7 @@ export default function Productivity() {
       </div>
 
       {/* Breakdown bars */}
-      <div className="bg-white border border-border rounded-xl p-4">
+      <div className="bg-white border border-border rounded-2xl shadow-sm p-4">
         <p className="text-xs font-semibold text-primary mb-4">Day breakdown</p>
         <div className="space-y-3">
           <div>
@@ -119,7 +119,7 @@ export default function Productivity() {
 
       {/* Recommendations */}
       {recommendations?.length > 0 && (
-        <div className="bg-white border border-border rounded-xl p-4">
+        <div className="bg-white border border-border rounded-2xl shadow-sm p-4">
           <div className="flex items-center gap-2 mb-3">
             <Lightbulb className="w-4 h-4 text-amber-500" />
             <p className="text-xs font-semibold text-primary">AI Recommendations</p>
