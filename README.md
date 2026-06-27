@@ -34,6 +34,7 @@ Built for the **BlockseBlock National Hackathon 2026** — PS1: The Last-Minute 
 - **Brain Dump** — paste a chaotic paragraph; Gemini extracts, dates, estimates, and prioritises every task
 - **Gemini Vision (Scan)** — upload a photo of a syllabus/timetable; deadlines become tasks
 - **Smart Game Plan** — a ranked, time-bucketed action queue that tells you exactly what to do next
+- **Goals & Habits** — set a goal and Gemini breaks it into milestones; build daily habits with streak tracking
 - **Live Google Calendar sync** with countdowns and urgency colours
 - **Escalating push reminders** at 24h / 2h / 1h / 30 min before each deadline (Cloud Scheduler-driven)
 - **Mission Control status bar** that pulses red within 2 hours of a deadline

@@ -1,7 +1,7 @@
 import { NavLink, useNavigate } from 'react-router-dom'
 import {
   Home, Calendar, CheckSquare, Grid2x2,
-  Timer, Bell, TrendingUp, Zap, LogOut, Settings, BookOpen
+  Timer, Bell, TrendingUp, Zap, LogOut, Settings, BookOpen, Target
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import Avatar from './Avatar'
@@ -21,6 +21,7 @@ const SECTIONS = [
     label: 'FOCUS TOOLS',
     items: [
       { to: '/dashboard/matrix',       icon: Grid2x2,     label: 'Game Plan' },
+      { to: '/dashboard/goals',        icon: Target,      label: 'Goals & Habits', dataTour: 'goals' },
       { to: '/dashboard/timer',        icon: Timer,       label: 'Focus Timer' },
       { to: '/dashboard/reminders',    icon: Bell,        label: 'Reminders',      reminderCount: true },
       { to: '/dashboard/productivity', icon: TrendingUp,  label: 'Productivity' },

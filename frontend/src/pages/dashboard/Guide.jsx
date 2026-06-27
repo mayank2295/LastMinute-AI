@@ -1,6 +1,6 @@
 import {
   Zap, CalendarCheck, MessageSquare, Brain, ScanLine, ListOrdered,
-  Calendar, Timer, Bell, TrendingUp, PlayCircle, Sparkles
+  Calendar, Timer, Bell, TrendingUp, PlayCircle, Sparkles, Target
 } from 'lucide-react'
 
 const STEPS = [
@@ -15,6 +15,7 @@ const FEATURES = [
   { icon: Brain, name: 'Brain Dump', what: 'Turns a messy paragraph of everything on your mind into clean, dated, prioritised tasks.', how: 'Click "Brain dump", paste your text, and hit Extract tasks.' },
   { icon: ScanLine, name: 'Scan (Gemini Vision)', what: 'Reads a photo of a syllabus, timetable, or notes and turns the deadlines into tasks automatically.', how: 'Click "Scan", upload an image, and review the extracted tasks.' },
   { icon: ListOrdered, name: 'Game Plan', what: 'A ranked, time-bucketed action queue (Overdue → Today → Tomorrow → This week) that tells you the one thing to do next.', how: 'Open "Game Plan" in the sidebar and start with the "Start here" card.' },
+  { icon: Target, name: 'Goals & Habits', what: 'Set a long-term goal and Gemini breaks it into milestones you can tick off; build daily habits and track your streak.', how: 'Open "Goals & Habits", add a goal then click "Break into steps with AI", and check in on habits daily.' },
   { icon: Calendar, name: 'Calendar', what: 'A live two-way view of your Google Calendar with deadline countdowns and urgency colours.', how: 'Open "Calendar" in the sidebar. Events created by the agent appear here and on your real Google Calendar.' },
   { icon: Timer, name: 'Focus Timer', what: 'A Pomodoro / Deep Work / Sprint timer; completed sessions feed your productivity score.', how: 'Open "Focus Timer", pick a mode, and start.' },
   { icon: Bell, name: 'Reminders', what: 'Escalating push alerts at 24h, 2h, 1h, and 30 minutes before each deadline — even when the app is closed.', how: 'Enable notifications in Settings; reminders are then sent automatically.' },

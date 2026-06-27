@@ -103,3 +103,14 @@ export const getReminders = (sid) => req('GET', `/api/reminders/${sid}`)
 export const getVapidKey  = ()    => req('GET', '/api/notifications/vapid-key')
 export const subscribeNotification = (sid, sub, title, deadline) =>
   req('POST', `/api/notifications/subscribe/${sid}`, { subscription: sub, task_title: title, deadline })
+
+// ─── Goals & Habits ─────────────────────────────────────────────────────────────
+export const getGoals      = (sid)           => req('GET',    `/api/goals/${sid}`)
+export const createGoal    = (sid, data)     => req('POST',   `/api/goals/${sid}`, data)
+export const updateGoal    = (sid, id, data) => req('PATCH',  `/api/goals/${sid}/${id}`, data)
+export const deleteGoal    = (sid, id)       => req('DELETE', `/api/goals/${sid}/${id}`)
+export const breakdownGoal = (sid, id)       => req('POST',   `/api/goals/${sid}/${id}/breakdown`)
+export const getHabits     = (sid)           => req('GET',    `/api/habits/${sid}`)
+export const createHabit   = (sid, data)     => req('POST',   `/api/habits/${sid}`, data)
+export const checkinHabit  = (sid, id)       => req('POST',   `/api/habits/${sid}/${id}/checkin`)
+export const deleteHabit   = (sid, id)       => req('DELETE', `/api/habits/${sid}/${id}`)

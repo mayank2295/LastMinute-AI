@@ -558,3 +558,27 @@ async def parse_image_tasks(session_id: str, image_bytes: bytes, mime_type: str)
     database.log_activity(session_id, f"Scanned an image and extracted {len(prioritized)} task(s)",
                           "Gemini Vision", icon="camera")
     return {"tasks": prioritized, "count": len(prioritized), "provider": "gemini"}
+
+
+async def breakdown_goal(goal_title: str, target_date: str = "") -> dict:
+    """Use Gemini to break a goal into 4-6 concrete, sequential, actionable milestones."""
+    when = f" The target date is {target_date}." if target_date else ""
+    prompt = (
+        f"Break the following goal into 4-6 concrete, sequential, actionable milestones.{when}\n"
+        f"Each milestone is a short imperative step (max ~10 words).\n"
+        f'Return ONLY a JSON array of strings, e.g. ["Step one", "Step two"].\n\n'
+        f"GOAL: {goal_title}"
+    )
+    raw = await ai_provider.generate(
+        prompt,
+        system="You are a goal-planning assistant. Output a valid JSON array of strings only.",
+        max_tokens=600,
+    )
+    parsed = _extract_json(raw)
+    milestones = []
+    if isinstance(parsed, list):
+        for m in parsed:
+            text = m if isinstance(m, str) else (m.get("text") or m.get("title") or "")
+            if text:
+                milestones.append({"text": str(text).strip(), "done": False})
+    return {"milestones": milestones, "provider": ai_provider.active_provider()}

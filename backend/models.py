@@ -104,3 +104,22 @@ class ProductivityScore(BaseModel):
     recommendations: List[str]
     meeting_load: float
     focus_time_available: int
+
+
+class CreateGoalRequest(BaseModel):
+    title: str
+    target_date: Optional[str] = None
+    motivation: Optional[str] = None
+
+
+class UpdateGoalRequest(BaseModel):
+    title: Optional[str] = None
+    target_date: Optional[str] = None
+    motivation: Optional[str] = None
+    milestones: Optional[List[dict]] = None
+    status: Optional[str] = None
+
+
+class CreateHabitRequest(BaseModel):
+    title: str
+    frequency: Optional[str] = "daily"

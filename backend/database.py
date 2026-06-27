@@ -7,7 +7,7 @@ Firestore persistence layer.
 
 import os
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from typing import Optional, List
 
 import firebase_admin
@@ -330,3 +330,108 @@ def get_focus_sessions(session_id: str, date: Optional[str] = None) -> List[dict
         result.append(data)
     result.sort(key=lambda r: r.get("completed_at") or "", reverse=True)
     return result
+
+
+# ─── Goals ────────────────────────────────────────────────────────────────────
+
+def save_goal(session_id: str, goal: dict) -> dict:
+    goal_id = goal.get("id") or str(uuid.uuid4())
+    data = {
+        "id": goal_id,
+        "session_id": session_id,
+        "title": goal.get("title", ""),
+        "target_date": goal.get("target_date", ""),
+        "motivation": goal.get("motivation", ""),
+        "milestones": goal.get("milestones", []),   # [{"text": str, "done": bool}]
+        "status": goal.get("status", "active"),
+        "created_at": goal.get("created_at", datetime.utcnow().isoformat()),
+    }
+    _db().collection("goals").document(goal_id).set(data, merge=True)
+    return data
+
+
+def get_goals(session_id: str) -> List[dict]:
+    docs = _db().collection("goals").where("session_id", "==", session_id).stream()
+    goals = [d.to_dict() for d in docs]
+    goals.sort(key=lambda g: g.get("created_at", ""), reverse=True)
+    return goals
+
+
+def update_goal(goal_id: str, session_id: str, updates: dict) -> Optional[dict]:
+    doc_ref = _db().collection("goals").document(goal_id)
+    doc = doc_ref.get()
+    if not doc.exists or doc.to_dict().get("session_id") != session_id:
+        return None
+    allowed = {"title", "target_date", "motivation", "milestones", "status"}
+    clean = {k: v for k, v in updates.items() if k in allowed}
+    if clean:
+        doc_ref.update(clean)
+    return {**doc.to_dict(), **clean}
+
+
+def delete_goal(goal_id: str, session_id: str) -> bool:
+    doc_ref = _db().collection("goals").document(goal_id)
+    doc = doc_ref.get()
+    if doc.exists and doc.to_dict().get("session_id") == session_id:
+        doc_ref.delete()
+        return True
+    return False
+
+
+# ─── Habits (with streaks) ──────────────────────────────────────────────────────
+
+def save_habit(session_id: str, habit: dict) -> dict:
+    habit_id = habit.get("id") or str(uuid.uuid4())
+    data = {
+        "id": habit_id,
+        "session_id": session_id,
+        "title": habit.get("title", ""),
+        "frequency": habit.get("frequency", "daily"),
+        "current_streak": habit.get("current_streak", 0),
+        "longest_streak": habit.get("longest_streak", 0),
+        "total_checkins": habit.get("total_checkins", 0),
+        "last_checkin": habit.get("last_checkin", ""),
+        "created_at": habit.get("created_at", datetime.utcnow().isoformat()),
+    }
+    _db().collection("habits").document(habit_id).set(data, merge=True)
+    return data
+
+
+def get_habits(session_id: str) -> List[dict]:
+    docs = _db().collection("habits").where("session_id", "==", session_id).stream()
+    habits = [d.to_dict() for d in docs]
+    habits.sort(key=lambda h: h.get("created_at", ""))
+    return habits
+
+
+def checkin_habit(habit_id: str, session_id: str) -> Optional[dict]:
+    """Mark a habit done today and update the streak."""
+    doc_ref = _db().collection("habits").document(habit_id)
+    doc = doc_ref.get()
+    if not doc.exists or doc.to_dict().get("session_id") != session_id:
+        return None
+    h = doc.to_dict()
+    today = datetime.utcnow().date()
+    today_str = today.isoformat()
+    last = h.get("last_checkin", "")
+    if last == today_str:
+        return h  # already checked in today — no double counting
+    yesterday_str = (today - timedelta(days=1)).isoformat()
+    streak = (h.get("current_streak", 0) + 1) if last == yesterday_str else 1
+    updates = {
+        "current_streak": streak,
+        "longest_streak": max(h.get("longest_streak", 0), streak),
+        "total_checkins": h.get("total_checkins", 0) + 1,
+        "last_checkin": today_str,
+    }
+    doc_ref.update(updates)
+    return {**h, **updates}
+
+
+def delete_habit(habit_id: str, session_id: str) -> bool:
+    doc_ref = _db().collection("habits").document(habit_id)
+    doc = doc_ref.get()
+    if doc.exists and doc.to_dict().get("session_id") == session_id:
+        doc_ref.delete()
+        return True
+    return False

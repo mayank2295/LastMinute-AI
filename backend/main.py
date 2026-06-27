@@ -34,6 +34,7 @@ from models import (
     SubscribeRequest, MoveTaskRequest, CreateTaskRequest,
     UpdateTaskRequest, FocusSessionRequest,
     BrainDumpRequest, PushSubscribeRequest,
+    CreateGoalRequest, UpdateGoalRequest, CreateHabitRequest,
 )
 
 CRON_SECRET = os.getenv("CRON_SECRET", "")
@@ -146,6 +147,7 @@ async def get_me(session_id: str = Query(...)):
 async def demo_start():
     """Seed a demo session and return its credentials. No Google login needed."""
     demo_data.seed_demo_tasks()
+    demo_data.seed_demo_goals_habits()
     return {
         "session_id": demo_data.DEMO_SESSION_ID,
         "email": demo_data.DEMO_EMAIL,
@@ -550,6 +552,89 @@ async def get_briefing(session_id: str):
         "productivity_score": score_data["score"],
         "recommendations": score_data["recommendations"][:2],
     }
+
+
+# ─── Goals & Habits ───────────────────────────────────────────────────────────
+
+def _require_access(session_id: str):
+    if not demo_data.is_demo(session_id) and not database.get_session(session_id):
+        raise HTTPException(status_code=401, detail="Not authenticated")
+
+
+@app.get("/api/goals/{session_id}")
+async def list_goals(session_id: str):
+    return {"goals": database.get_goals(session_id)}
+
+
+@app.post("/api/goals/{session_id}")
+async def create_goal(session_id: str, body: CreateGoalRequest):
+    if not body.title or not body.title.strip():
+        raise HTTPException(status_code=400, detail="Title is required")
+    _require_access(session_id)
+    goal = database.save_goal(session_id, {
+        "title": body.title.strip(),
+        "target_date": body.target_date or "",
+        "motivation": body.motivation or "",
+    })
+    database.log_activity(session_id, f"Created goal: {goal['title']}", icon="target")
+    return goal
+
+
+@app.patch("/api/goals/{session_id}/{goal_id}")
+async def update_goal(session_id: str, goal_id: str, body: UpdateGoalRequest):
+    updated = database.update_goal(goal_id, session_id, body.model_dump(exclude_none=True))
+    if updated is None:
+        raise HTTPException(status_code=404, detail="Goal not found")
+    return updated
+
+
+@app.delete("/api/goals/{session_id}/{goal_id}")
+async def delete_goal(session_id: str, goal_id: str):
+    return {"success": database.delete_goal(goal_id, session_id)}
+
+
+@app.post("/api/goals/{session_id}/{goal_id}/breakdown")
+async def goal_breakdown(session_id: str, goal_id: str):
+    """Gemini breaks the goal into milestones and saves them onto the goal."""
+    goal = next((g for g in database.get_goals(session_id) if g["id"] == goal_id), None)
+    if not goal:
+        raise HTTPException(status_code=404, detail="Goal not found")
+    result = await gemini_agent.breakdown_goal(goal["title"], goal.get("target_date", ""))
+    milestones = result.get("milestones", [])
+    if milestones:
+        database.update_goal(goal_id, session_id, {"milestones": milestones})
+        database.log_activity(session_id, f"AI broke '{goal['title']}' into {len(milestones)} steps",
+                              "Gemini", icon="target")
+    return {"milestones": milestones, "provider": result.get("provider")}
+
+
+@app.get("/api/habits/{session_id}")
+async def list_habits(session_id: str):
+    return {"habits": database.get_habits(session_id)}
+
+
+@app.post("/api/habits/{session_id}")
+async def create_habit(session_id: str, body: CreateHabitRequest):
+    if not body.title or not body.title.strip():
+        raise HTTPException(status_code=400, detail="Title is required")
+    _require_access(session_id)
+    return database.save_habit(session_id, {
+        "title": body.title.strip(),
+        "frequency": body.frequency or "daily",
+    })
+
+
+@app.post("/api/habits/{session_id}/{habit_id}/checkin")
+async def habit_checkin(session_id: str, habit_id: str):
+    updated = database.checkin_habit(habit_id, session_id)
+    if updated is None:
+        raise HTTPException(status_code=404, detail="Habit not found")
+    return updated
+
+
+@app.delete("/api/habits/{session_id}/{habit_id}")
+async def delete_habit(session_id: str, habit_id: str):
+    return {"success": database.delete_habit(habit_id, session_id)}
 
 
 # ─── Serve frontend in production ─────────────────────────────────────────────

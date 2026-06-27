@@ -22,6 +22,7 @@ const Calendar        = lazy(() => import('./pages/dashboard/Calendar'))
 const Tasks           = lazy(() => import('./pages/dashboard/Tasks'))
 const Settings        = lazy(() => import('./pages/dashboard/Settings'))
 const Guide           = lazy(() => import('./pages/dashboard/Guide'))
+const Goals           = lazy(() => import('./pages/dashboard/Goals'))
 
 const qc = new QueryClient({ defaultOptions: { queries: { retry: 1, staleTime: 2 * 60_000 } } })
 
@@ -71,6 +72,7 @@ export default function App() {
                   <Route path="productivity" element={<Productivity />} />
                   <Route path="calendar"    element={<Calendar />} />
                   <Route path="tasks"       element={<Tasks />} />
+                  <Route path="goals"       element={<Goals />} />
                   <Route path="settings"    element={<Settings />} />
                   <Route path="guide"       element={<Guide />} />
                 </Route>

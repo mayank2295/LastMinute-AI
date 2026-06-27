@@ -23,6 +23,8 @@ const DASHBOARD_TOUR = [
     body: 'Ask it anything: "schedule my report tomorrow at 3 PM" and it actually does it.' },
   { selector: '[data-tour="score"]', title: 'Your productivity score',
     body: 'A live score from your completion rate, focus sessions, and calendar load. Aim for 70+.' },
+  { selector: '[data-tour="goals"]', title: 'Goals & Habits',
+    body: 'Set a goal and Gemini breaks it into milestones; build daily habits and keep your streak alive.' },
   { selector: '[data-tour="guide"]', title: 'New here? Open the User Guide',
     body: 'A full how-to manual explaining every feature and the purpose of the app — open it anytime you feel lost.' },
   { selector: '[data-tour="usermenu"]', title: 'Profile & Settings',
@@ -37,6 +39,7 @@ const PAGE_TITLES = {
   '/dashboard/productivity':  'Productivity',
   '/dashboard/calendar':      'Calendar',
   '/dashboard/tasks':         'My Tasks',
+  '/dashboard/goals':         'Goals & Habits',
   '/dashboard/settings':      'Settings',
   '/dashboard/guide':         'User Guide',
 }
