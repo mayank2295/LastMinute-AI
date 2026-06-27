@@ -44,6 +44,9 @@ app.add_middleware(
     allow_origins=[
         "http://localhost:5173",
         "http://localhost:3000",
+        "https://mayank.store",
+        "https://www.mayank.store",
+        "https://lastminute-ai-ummt2blwla-el.a.run.app",
         os.getenv("FRONTEND_URL", "http://localhost:5173"),
     ],
     allow_credentials=True,
@@ -527,6 +530,12 @@ def _spa_index():
 if os.path.exists(_static_dir):
     @app.get("/login")
     async def serve_login(): return _spa_index()
+
+    @app.get("/privacy")
+    async def serve_privacy(): return _spa_index()
+
+    @app.get("/terms")
+    async def serve_terms(): return _spa_index()
 
     @app.get("/dashboard")
     async def serve_dashboard(): return _spa_index()

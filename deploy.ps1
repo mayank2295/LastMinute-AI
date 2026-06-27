@@ -17,7 +17,13 @@
 $PROJECT  = "lastminuteai"
 $REGION   = "asia-south1"
 $SERVICE  = "lastminute-ai"
-$URL      = "https://lastminute-ai-ummt2blwla-el.a.run.app"
+$URL      = "https://lastminute-ai-ummt2blwla-el.a.run.app"   # the Cloud Run service URL (build target)
+
+# Public URL used for OAuth redirect + frontend origin.
+# Keep this as $URL until mayank.store is live in Cloudflare AND the redirect URI
+# https://mayank.store/api/auth/callback/google is added to the OAuth client.
+# Then switch the next line to: $PUBLIC_URL = "https://mayank.store"
+$PUBLIC_URL = $URL
 $GCLOUD   = "C:\Program Files (x86)\Google\Cloud SDK\google-cloud-sdk\bin\gcloud.cmd"
 $ENV_FILE = Join-Path $PSScriptRoot "backend\.env"
 
@@ -48,14 +54,14 @@ Copy-Item -Recurse (Join-Path $PSScriptRoot "frontend\dist") $static
 $envList = @(
     "GOOGLE_CLIENT_ID=$($cfg['GOOGLE_CLIENT_ID'])",
     "GOOGLE_CLIENT_SECRET=$($cfg['GOOGLE_CLIENT_SECRET'])",
-    "GOOGLE_REDIRECT_URI=$URL/api/auth/callback/google",
+    "GOOGLE_REDIRECT_URI=$PUBLIC_URL/api/auth/callback/google",
     "FIREBASE_PROJECT_ID=$($cfg['FIREBASE_PROJECT_ID'])",
     "FIREBASE_CLIENT_EMAIL=$($cfg['FIREBASE_CLIENT_EMAIL'])",
     "VAPID_PUBLIC_KEY=$($cfg['VAPID_PUBLIC_KEY'])",
     "VAPID_PRIVATE_KEY=$($cfg['VAPID_PRIVATE_KEY'])",
     "VAPID_CLAIMS_EMAIL=$($cfg['VAPID_CLAIMS_EMAIL'])",
     "SECRET_KEY=$($cfg['SECRET_KEY'])",
-    "FRONTEND_URL=$URL",
+    "FRONTEND_URL=$PUBLIC_URL",
     "OAUTHLIB_RELAX_TOKEN_SCOPE=1",
     "GEMINI_API_KEY=$($cfg['GEMINI_API_KEY'])"          # Google Gemini — the app's AI engine
 )

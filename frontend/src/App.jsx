@@ -5,6 +5,7 @@ import { ThemeProvider } from './context/ThemeContext'
 
 import Landing    from './pages/Landing'
 import Login      from './pages/Login'
+import { Privacy, Terms } from './pages/Legal'
 import DashboardLayout from './pages/dashboard/DashboardLayout'
 import Home       from './pages/dashboard/Home'
 import PriorityMatrix from './pages/dashboard/PriorityMatrix'
@@ -45,6 +46,9 @@ export default function App() {
             {/* Landing is always viewable — even when logged in (no redirect) */}
             <Route path="/" element={<Landing />} />
             <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
+            {/* Legal pages — public, required for Google OAuth verification */}
+            <Route path="/privacy" element={<Privacy />} />
+            <Route path="/terms" element={<Terms />} />
             <Route path="/dashboard" element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>}>
               <Route index    element={<Home />} />
               <Route path="matrix"      element={<PriorityMatrix />} />

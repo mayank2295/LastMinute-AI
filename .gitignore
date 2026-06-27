@@ -46,3 +46,7 @@ frontend/.env.production
 # presentation binaries
 *.pptx
 *.docx
+
+# personal / not for publication
+VIDEO_SCRIPT.md
+DOMAIN_AND_OAUTH_SETUP.md

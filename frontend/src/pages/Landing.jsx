@@ -41,7 +41,7 @@ function ProductPreview() {
           <div className="w-3 h-3 rounded-full bg-yellow-500/80" />
           <div className="w-3 h-3 rounded-full bg-green-500/80" />
           <div className="flex-1 mx-3 bg-[#2a2a2a] rounded px-3 py-1 text-[11px] text-gray-500 text-center">
-            lastminute-ai-ummt2blwla-el.a.run.app/dashboard
+            mayank.store/dashboard
           </div>
         </div>
         <div className="flex bg-[#0f0f0f]" style={{ minHeight: 360 }}>
@@ -416,9 +416,13 @@ export default function Landing() {
           <p className="text-xs" style={{ color: C.faint }}>
             Built for BlockseBlock Hackathon · Google Gemini + Google APIs · Google Cloud Run
           </p>
-          <Link to="/login" className="text-xs flex items-center gap-1 hover:opacity-70 transition-opacity" style={{ color: C.sub }}>
-            Sign in <ChevronRight className="w-3 h-3" />
-          </Link>
+          <div className="flex items-center gap-4 text-xs">
+            <Link to="/privacy" className="hover:opacity-70 transition-opacity" style={{ color: C.sub }}>Privacy</Link>
+            <Link to="/terms" className="hover:opacity-70 transition-opacity" style={{ color: C.sub }}>Terms</Link>
+            <Link to="/login" className="flex items-center gap-1 hover:opacity-70 transition-opacity" style={{ color: C.sub }}>
+              Sign in <ChevronRight className="w-3 h-3" />
+            </Link>
+          </div>
         </div>
       </footer>
 
