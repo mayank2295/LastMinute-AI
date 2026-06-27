@@ -1,9 +1,10 @@
 import { NavLink, useNavigate } from 'react-router-dom'
 import {
   Home, Calendar, CheckSquare, Grid2x2,
-  Timer, Bell, TrendingUp, Zap, LogOut
+  Timer, Bell, TrendingUp, Zap, LogOut, Settings, BookOpen
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
+import Avatar from './Avatar'
 import { useQuery } from '@tanstack/react-query'
 import { getTasks, getReminders } from '../services/api'
 
@@ -23,6 +24,13 @@ const SECTIONS = [
       { to: '/dashboard/timer',        icon: Timer,       label: 'Focus Timer' },
       { to: '/dashboard/reminders',    icon: Bell,        label: 'Reminders',      reminderCount: true },
       { to: '/dashboard/productivity', icon: TrendingUp,  label: 'Productivity' },
+    ],
+  },
+  {
+    label: 'ACCOUNT',
+    items: [
+      { to: '/dashboard/guide',        icon: BookOpen,    label: 'User Guide' },
+      { to: '/dashboard/settings',     icon: Settings,    label: 'Settings' },
     ],
   },
 ]
@@ -83,8 +91,6 @@ export default function Sidebar({ onClose }) {
     navigate('/')
   }
 
-  const initial = user?.name?.[0]?.toUpperCase() || user?.email?.[0]?.toUpperCase() || 'U'
-
   return (
     <aside className="w-[240px] h-full flex flex-col bg-white border-r border-border flex-shrink-0">
       {/* Logo — click to return to the landing page (stays logged in) */}
@@ -122,18 +128,20 @@ export default function Sidebar({ onClose }) {
 
       {/* User info */}
       <div className="border-t border-border p-3">
-        <div className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-subtle transition-colors">
-          <div className="w-8 h-8 rounded-full bg-accent-light border border-accent-border flex items-center justify-center text-sm font-bold text-accent-text flex-shrink-0">
-            {initial}
-          </div>
+        <NavLink to="/dashboard/settings" className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-subtle transition-colors">
+          <Avatar src={user?.picture} name={user?.name} email={user?.email} size={32} className="flex-shrink-0" />
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium text-primary truncate">{user?.name || 'User'}</p>
             <p className="text-xs text-muted truncate">{user?.email}</p>
           </div>
-          <button onClick={handleLogout} title="Sign out" className="text-gray-400 hover:text-red-500 transition-colors">
+          <button
+            onClick={(e) => { e.preventDefault(); handleLogout() }}
+            title="Sign out"
+            className="text-gray-400 hover:text-red-500 transition-colors"
+          >
             <LogOut className="w-4 h-4" />
           </button>
-        </div>
+        </NavLink>
       </div>
     </aside>
   )

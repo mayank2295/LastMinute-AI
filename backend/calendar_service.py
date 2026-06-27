@@ -88,6 +88,7 @@ def handle_oauth_callback(code: str, session_id: str) -> dict:
         token_expiry=creds.expiry.isoformat() if creds.expiry else "",
         name=user_info.get("name", ""),
         timezone_name=user_tz,
+        picture=user_info.get("picture", ""),
     )
 
     print(f"[OAuth] Session saved for {user_info.get('email')} with session_id={session_id[:8]}...")
@@ -95,6 +96,7 @@ def handle_oauth_callback(code: str, session_id: str) -> dict:
         "email": user_info.get("email", ""),
         "name": user_info.get("name", ""),
         "timezone": user_tz,
+        "picture": user_info.get("picture", ""),
     }
 
 

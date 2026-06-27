@@ -14,6 +14,8 @@ import Reminders  from './pages/dashboard/Reminders'
 import Productivity from './pages/dashboard/Productivity'
 import Calendar   from './pages/dashboard/Calendar'
 import Tasks      from './pages/dashboard/Tasks'
+import Settings   from './pages/dashboard/Settings'
+import Guide      from './pages/dashboard/Guide'
 
 const qc = new QueryClient({ defaultOptions: { queries: { retry: 1, staleTime: 2 * 60_000 } } })
 
@@ -57,6 +59,8 @@ export default function App() {
               <Route path="productivity" element={<Productivity />} />
               <Route path="calendar"    element={<Calendar />} />
               <Route path="tasks"       element={<Tasks />} />
+              <Route path="settings"    element={<Settings />} />
+              <Route path="guide"       element={<Guide />} />
             </Route>
             {/* Catch-all */}
             <Route path="*" element={<Navigate to="/" replace />} />

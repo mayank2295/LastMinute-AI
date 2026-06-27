@@ -23,8 +23,11 @@ export function AuthProvider({ children }) {
       localStorage.setItem('lm_email',      email)
       localStorage.setItem('lm_name',       name)
       setUser({ sessionId: urlSid, email, name })
-      // Enrich with the user's real calendar timezone
-      getMe(urlSid).then(d => setUser(u => ({ ...u, timezone: d.timezone }))).catch(() => {})
+      // Enrich with the user's real calendar timezone + Google profile picture
+      getMe(urlSid).then(d => {
+        if (d.picture) localStorage.setItem('lm_picture', d.picture)
+        setUser(u => ({ ...u, timezone: d.timezone, picture: d.picture }))
+      }).catch(() => {})
       // Clean URL without triggering a navigation
       window.history.replaceState({}, '', window.location.pathname)
       setLoading(false)
@@ -37,11 +40,13 @@ export function AuthProvider({ children }) {
 
     getMe(stored)
       .then(data => {
+        if (data.picture) localStorage.setItem('lm_picture', data.picture)
         setUser({
           sessionId: stored,
           email:     data.email,
           name:      data.name || localStorage.getItem('lm_name') || '',
           timezone:  data.timezone,
+          picture:   data.picture || localStorage.getItem('lm_picture') || '',
         })
       })
       .catch(() => {
@@ -49,6 +54,7 @@ export function AuthProvider({ children }) {
         localStorage.removeItem('lm_session_id')
         localStorage.removeItem('lm_email')
         localStorage.removeItem('lm_name')
+        localStorage.removeItem('lm_picture')
       })
       .finally(() => setLoading(false))
   }, [])
@@ -64,6 +70,7 @@ export function AuthProvider({ children }) {
     localStorage.removeItem('lm_session_id')
     localStorage.removeItem('lm_email')
     localStorage.removeItem('lm_name')
+    localStorage.removeItem('lm_picture')
     setUser(null)
   }, [])
 

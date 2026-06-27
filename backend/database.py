@@ -42,7 +42,8 @@ def _db() -> firestore.client:
 
 def save_session(session_id: str, user_id: str, access_token: str,
                  refresh_token: str, token_expiry: str,
-                 name: Optional[str] = None, timezone_name: Optional[str] = None):
+                 name: Optional[str] = None, timezone_name: Optional[str] = None,
+                 picture: Optional[str] = None):
     now = datetime.utcnow().isoformat()
     doc_ref = _db().collection("sessions").document(session_id)
     existing = doc_ref.get()
@@ -60,6 +61,8 @@ def save_session(session_id: str, user_id: str, access_token: str,
         data["name"] = name
     if timezone_name is not None:
         data["timezone"] = timezone_name
+    if picture is not None:
+        data["picture"] = picture
     if existing.exists:
         doc_ref.update(data)
     else:

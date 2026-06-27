@@ -1,0 +1,14 @@
+# Keep the Cloud Build upload small & fast. Without this, gcloud uploads the
+# entire backend/ folder (including the 347MB venv/) which stalls deploys.
+# NOTE: do NOT ignore static/ — it's the built frontend the app serves.
+
+venv/
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.log
+.env
+.pytest_cache/
+*.egg-info/

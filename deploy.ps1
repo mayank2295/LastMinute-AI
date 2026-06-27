@@ -20,10 +20,9 @@ $SERVICE  = "lastminute-ai"
 $URL      = "https://lastminute-ai-ummt2blwla-el.a.run.app"   # the Cloud Run service URL (build target)
 
 # Public URL used for OAuth redirect + frontend origin.
-# Keep this as $URL until mayank.store is live in Cloudflare AND the redirect URI
-# https://mayank.store/api/auth/callback/google is added to the OAuth client.
-# Then switch the next line to: $PUBLIC_URL = "https://mayank.store"
-$PUBLIC_URL = $URL
+# mayank.store is live (Cloudflare Worker -> Cloud Run) and its redirect URI is
+# registered on the OAuth client, so production runs on the custom domain.
+$PUBLIC_URL = "https://mayank.store"
 $GCLOUD   = "C:\Program Files (x86)\Google\Cloud SDK\google-cloud-sdk\bin\gcloud.cmd"
 $ENV_FILE = Join-Path $PSScriptRoot "backend\.env"
 

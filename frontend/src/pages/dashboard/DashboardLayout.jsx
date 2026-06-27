@@ -3,6 +3,7 @@ import { Outlet, useLocation } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import Sidebar from '../../components/Sidebar'
 import ThemeToggle from '../../components/ThemeToggle'
+import UserMenu from '../../components/UserMenu'
 import Tour from '../../components/Tour'
 import { Menu, TrendingUp, HelpCircle } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
@@ -32,6 +33,8 @@ const PAGE_TITLES = {
   '/dashboard/productivity':  'Productivity',
   '/dashboard/calendar':      'Calendar',
   '/dashboard/tasks':         'My Tasks',
+  '/dashboard/settings':      'Settings',
+  '/dashboard/guide':         'User Guide',
 }
 
 function StatusBar({ sessionId }) {
@@ -164,9 +167,7 @@ export default function DashboardLayout() {
               <HelpCircle className="w-4 h-4" />
             </button>
             <ThemeToggle />
-            <div className="w-8 h-8 rounded-full bg-accent-light border border-accent-border flex items-center justify-center text-sm font-bold text-accent-text">
-              {user?.name?.[0]?.toUpperCase() || 'U'}
-            </div>
+            <UserMenu />
           </div>
         </header>
 

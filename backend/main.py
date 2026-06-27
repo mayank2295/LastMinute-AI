@@ -103,7 +103,8 @@ async def get_me(session_id: str = Query(...)):
     # Prefer the real Google profile name captured at login; fall back to email.
     name = session.get("name") or email.split("@")[0].replace(".", " ").replace("_", " ").title()
     return {"session_id": session_id, "email": email, "name": name,
-            "timezone": session.get("timezone", "UTC")}
+            "timezone": session.get("timezone", "UTC"),
+            "picture": session.get("picture", "")}
 
 
 # ─── Demo Mode (no login — lets judges try the app instantly) ──────────────────
