@@ -13,8 +13,11 @@ from googleapiclient.discovery import build
 
 import database
 
+# Least-privilege scopes. The app only reads + creates calendar EVENTS and reads
+# the calendar's timezone — it never accesses other calendars, settings, ACLs, or
+# sharing, so we use calendar.events (not the broad calendar scope).
 SCOPES = [
-    "https://www.googleapis.com/auth/calendar",
+    "https://www.googleapis.com/auth/calendar.events",
     "https://www.googleapis.com/auth/userinfo.email",
     "openid",
     "https://www.googleapis.com/auth/userinfo.profile",
@@ -67,8 +70,12 @@ def handle_oauth_callback(code: str, session_id: str) -> dict:
     user_tz = "UTC"
     try:
         cal_service = build("calendar", "v3", credentials=creds)
-        primary = cal_service.calendarList().get(calendarId="primary").execute()
-        user_tz = primary.get("timeZone", "UTC")
+        # events.list returns the calendar's timeZone and works under the
+        # calendar.events scope (calendarList does not).
+        probe = cal_service.events().list(
+            calendarId="primary", maxResults=1, singleEvents=True
+        ).execute()
+        user_tz = probe.get("timeZone", "UTC")
         print(f"[OAuth] Detected calendar timezone: {user_tz}")
     except Exception as tz_err:
         print(f"[OAuth] Could not detect timezone, defaulting to UTC: {tz_err}")
@@ -187,15 +194,7 @@ def get_upcoming_events(session_id: str, days: int = 7) -> List[dict]:
     print(f"[Calendar] Raw Google API returned {len(items)} item(s)")
 
     if not items:
-        # Extra diagnostic: check if calendar list itself works
-        try:
-            cal_list = service.calendarList().list().execute()
-            cals = cal_list.get("items", [])
-            print(f"[Calendar] Calendar list has {len(cals)} calendar(s):")
-            for c in cals[:5]:
-                print(f"  - {c.get('id')} | {c.get('summary')} | primary={c.get('primary', False)}")
-        except Exception as list_err:
-            print(f"[Calendar] Could not list calendars: {list_err}")
+        print("[Calendar] No upcoming events in the requested window")
 
     events = []
     for ev in items:

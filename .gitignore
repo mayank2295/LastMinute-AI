@@ -50,3 +50,4 @@ frontend/.env.production
 # personal / not for publication
 VIDEO_SCRIPT.md
 DOMAIN_AND_OAUTH_SETUP.md
+OAUTH_VERIFICATION_SCRIPT.md
