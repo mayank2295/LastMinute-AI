@@ -1,4 +1,7 @@
-﻿import os
+import logging
+logger = logging.getLogger("lastminute")
+
+import os
 
 os.environ.setdefault("OAUTHLIB_RELAX_TOKEN_SCOPE", "1")
 
@@ -26,25 +29,29 @@ SCOPES = [
 _DEFAULT_REDIRECT = "http://localhost:8000/api/auth/callback/google"
 
 
-def _redirect_uri() -> str:
-    return os.getenv("GOOGLE_REDIRECT_URI", _DEFAULT_REDIRECT)
+def _redirect_uri(override: Optional[str] = None) -> str:
+    # A per-request redirect URI (derived from the domain the user is actually on)
+    # takes priority, so login works independently on both mayank.store and the
+    # run.app URL. Falls back to the env var, then localhost for dev.
+    return override or os.getenv("GOOGLE_REDIRECT_URI", _DEFAULT_REDIRECT)
 
 
-def _client_config() -> dict:
+def _client_config(redirect_uri: Optional[str] = None) -> dict:
     return {
         "web": {
             "client_id": os.getenv("GOOGLE_CLIENT_ID"),
             "client_secret": os.getenv("GOOGLE_CLIENT_SECRET"),
             "auth_uri": "https://accounts.google.com/o/oauth2/auth",
             "token_uri": "https://oauth2.googleapis.com/token",
-            "redirect_uris": [_redirect_uri()],
+            "redirect_uris": [_redirect_uri(redirect_uri)],
         }
     }
 
 
-def get_auth_url(session_id: str) -> str:
-    flow = Flow.from_client_config(_client_config(), scopes=SCOPES)
-    flow.redirect_uri = _redirect_uri()
+def get_auth_url(session_id: str, redirect_uri: Optional[str] = None) -> str:
+    ru = _redirect_uri(redirect_uri)
+    flow = Flow.from_client_config(_client_config(ru), scopes=SCOPES)
+    flow.redirect_uri = ru
     auth_url, _ = flow.authorization_url(
         access_type="offline",
         include_granted_scopes="true",
@@ -54,13 +61,14 @@ def get_auth_url(session_id: str) -> str:
     return auth_url
 
 
-def handle_oauth_callback(code: str, session_id: str) -> dict:
-    flow = Flow.from_client_config(_client_config(), scopes=SCOPES, state=session_id)
-    flow.redirect_uri = _redirect_uri()
+def handle_oauth_callback(code: str, session_id: str, redirect_uri: Optional[str] = None) -> dict:
+    ru = _redirect_uri(redirect_uri)
+    flow = Flow.from_client_config(_client_config(ru), scopes=SCOPES, state=session_id)
+    flow.redirect_uri = ru
     flow.fetch_token(code=code)
     creds = flow.credentials
 
-    print(f"[OAuth] Token received — has refresh_token: {bool(creds.refresh_token)}, expiry: {creds.expiry}")
+    logger.info(f"[OAuth] Token received — has refresh_token: {bool(creds.refresh_token)}, expiry: {creds.expiry}")
 
     service = build("oauth2", "v2", credentials=creds)
     user_info = service.userinfo().get().execute()
@@ -76,9 +84,9 @@ def handle_oauth_callback(code: str, session_id: str) -> dict:
             calendarId="primary", maxResults=1, singleEvents=True
         ).execute()
         user_tz = probe.get("timeZone", "UTC")
-        print(f"[OAuth] Detected calendar timezone: {user_tz}")
+        logger.info(f"[OAuth] Detected calendar timezone: {user_tz}")
     except Exception as tz_err:
-        print(f"[OAuth] Could not detect timezone, defaulting to UTC: {tz_err}")
+        logger.info(f"[OAuth] Could not detect timezone, defaulting to UTC: {tz_err}")
 
     database.save_session(
         session_id=session_id,
@@ -91,7 +99,7 @@ def handle_oauth_callback(code: str, session_id: str) -> dict:
         picture=user_info.get("picture", ""),
     )
 
-    print(f"[OAuth] Session saved for {user_info.get('email')} with session_id={session_id[:8]}...")
+    logger.info(f"[OAuth] Session saved for {user_info.get('email')} with session_id={session_id[:8]}...")
     return {
         "email": user_info.get("email", ""),
         "name": user_info.get("name", ""),
@@ -103,13 +111,13 @@ def handle_oauth_callback(code: str, session_id: str) -> dict:
 def get_credentials(session_id: str) -> Optional[Credentials]:
     session = database.get_session(session_id)
     if not session:
-        print(f"[Auth] ERROR — no session found for id={session_id[:8]}...")
+        logger.info(f"[Auth] ERROR — no session found for id={session_id[:8]}...")
         return None
 
     email = session.get("user_id", "unknown")
     has_refresh = bool(session.get("refresh_token"))
     expiry_str = session.get("token_expiry", "")
-    print(f"[Auth] Session found for {email} | has_refresh={has_refresh} | stored_expiry={expiry_str!r}")
+    logger.info(f"[Auth] Session found for {email} | has_refresh={has_refresh} | stored_expiry={expiry_str!r}")
 
     # Parse the stored expiry string.
     # IMPORTANT: Google's Credentials class compares expiry against datetime.utcnow()
@@ -124,7 +132,7 @@ def get_credentials(session_id: str) -> Optional[Credentials]:
             else:
                 expiry_naive = dt  # already naive UTC
         except Exception as parse_err:
-            print(f"[Auth] Could not parse token_expiry: {parse_err}")
+            logger.info(f"[Auth] Could not parse token_expiry: {parse_err}")
 
     creds = Credentials(
         token=session["access_token"],
@@ -136,7 +144,7 @@ def get_credentials(session_id: str) -> Optional[Credentials]:
         expiry=expiry_naive,   # naive UTC — Google lib requirement
     )
 
-    print(f"[Auth] creds.valid={creds.valid}, creds.expired={creds.expired}, creds.expiry={creds.expiry}")
+    logger.info(f"[Auth] creds.valid={creds.valid}, creds.expired={creds.expired}, creds.expiry={creds.expiry}")
 
     # Proactively refresh if expired OR within 5 minutes of expiry.
     # Use naive UTC for comparison to match Google's internals.
@@ -148,7 +156,7 @@ def get_credentials(session_id: str) -> Optional[Credentials]:
     )
 
     if needs_refresh:
-        print("[Auth] Token expired/expiring — refreshing...")
+        logger.info("[Auth] Token expired/expiring — refreshing...")
         try:
             creds.refresh(Request())
             database.save_session(
@@ -158,11 +166,11 @@ def get_credentials(session_id: str) -> Optional[Credentials]:
                 refresh_token=creds.refresh_token or session.get("refresh_token", ""),
                 token_expiry=creds.expiry.isoformat() if creds.expiry else "",
             )
-            print(f"[Auth] Token refreshed, new expiry: {creds.expiry}")
+            logger.info(f"[Auth] Token refreshed, new expiry: {creds.expiry}")
         except Exception as refresh_err:
-            print(f"[Auth] Token refresh FAILED: {refresh_err}")
+            logger.info(f"[Auth] Token refresh FAILED: {refresh_err}")
     else:
-        print("[Auth] Token still valid, no refresh needed")
+        logger.info("[Auth] Token still valid, no refresh needed")
 
     return creds
 
@@ -177,7 +185,7 @@ def get_upcoming_events(session_id: str, days: int = 7) -> List[dict]:
     now = datetime.now(timezone.utc)
     time_max = now + timedelta(days=days)
 
-    print(f"[Calendar] Listing events | session={session_id[:8]}... | timeMin={now.isoformat()} | timeMax={time_max.isoformat()}")
+    logger.info(f"[Calendar] Listing events | session={session_id[:8]}... | timeMin={now.isoformat()} | timeMax={time_max.isoformat()}")
 
     try:
         result = service.events().list(
@@ -189,14 +197,14 @@ def get_upcoming_events(session_id: str, days: int = 7) -> List[dict]:
             orderBy="startTime",
         ).execute()
     except Exception as api_err:
-        print(f"[Calendar] Google API error: {api_err}")
+        logger.info(f"[Calendar] Google API error: {api_err}")
         raise
 
     items = result.get("items", [])
-    print(f"[Calendar] Raw Google API returned {len(items)} item(s)")
+    logger.info(f"[Calendar] Raw Google API returned {len(items)} item(s)")
 
     if not items:
-        print("[Calendar] No upcoming events in the requested window")
+        logger.info("[Calendar] No upcoming events in the requested window")
 
     events = []
     for ev in items:
@@ -211,9 +219,9 @@ def get_upcoming_events(session_id: str, days: int = 7) -> List[dict]:
             "location":    ev.get("location", ""),
             "html_link":   ev.get("htmlLink", ""),
         })
-        print(f"[Calendar]   >> {start[:16] if start else '?'} | {ev.get('summary', 'Untitled')}")
+        logger.info(f"[Calendar]   >> {start[:16] if start else '?'} | {ev.get('summary', 'Untitled')}")
 
-    print(f"[Calendar] Returning {len(events)} event(s)")
+    logger.info(f"[Calendar] Returning {len(events)} event(s)")
     return events
 
 
@@ -253,14 +261,14 @@ def create_calendar_event(
         },
     }
 
-    print(f"[Calendar] Creating event: {title!r} {start_time} >> {end_time}")
+    logger.info(f"[Calendar] Creating event: {title!r} {start_time} >> {end_time}")
     try:
         created = service.events().insert(calendarId="primary", body=body).execute()
     except Exception as e:
-        print(f"[Calendar] Create event failed: {e}")
+        logger.info(f"[Calendar] Create event failed: {e}")
         raise
 
-    print(f"[Calendar] Event created: {created.get('htmlLink')}")
+    logger.info(f"[Calendar] Event created: {created.get('htmlLink')}")
     return {
         "id":         created["id"],
         "title":      created.get("summary", ""),

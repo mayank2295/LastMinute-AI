@@ -1,3 +1,6 @@
+import logging
+logger = logging.getLogger("lastminute")
+
 """
 Unified text-generation provider.
 
@@ -19,9 +22,9 @@ if _GEMINI_KEY:
         import google.generativeai as genai
         genai.configure(api_key=_GEMINI_KEY)
         _gemini_model = genai.GenerativeModel(_GEMINI_MODEL)
-        print(f"[AI] Using Google Gemini ({_GEMINI_MODEL})")
+        logger.info(f"[AI] Using Google Gemini ({_GEMINI_MODEL})")
     except Exception as e:
-        print(f"[AI] Gemini init failed, will fall back to Claude: {e}")
+        logger.info(f"[AI] Gemini init failed, will fall back to Claude: {e}")
         _gemini_model = None
 
 # Claude fallback (already used by the chat agent)
@@ -51,7 +54,7 @@ async def generate(prompt: str, system: Optional[str] = None, max_tokens: int = 
             resp = await _gemini_model.generate_content_async(full)
             return (resp.text or "").strip()
         except Exception as e:
-            print(f"[AI] Gemini generation failed, falling back: {e}")
+            logger.info(f"[AI] Gemini generation failed, falling back: {e}")
 
     # ── Claude fallback (text only) ──
     if _anthropic_client is not None:
@@ -66,7 +69,7 @@ async def generate(prompt: str, system: Optional[str] = None, max_tokens: int = 
             resp = await _anthropic_client.messages.create(**kwargs)
             return "".join(b.text for b in resp.content if b.type == "text").strip()
         except Exception as e:
-            print(f"[AI] Claude generation failed: {e}")
+            logger.info(f"[AI] Claude generation failed: {e}")
 
     return ""
 
@@ -85,5 +88,5 @@ async def generate_from_image(prompt: str, image_bytes: bytes, mime_type: str = 
         )
         return (resp.text or "").strip()
     except Exception as e:
-        print(f"[AI] Gemini vision failed: {e}")
+        logger.info(f"[AI] Gemini vision failed: {e}")
         return ""

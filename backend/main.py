@@ -2,11 +2,20 @@ import os
 import uuid
 import json
 import asyncio
+import logging
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from typing import Optional
 
-from fastapi import FastAPI, HTTPException, Query, Header, UploadFile, File
+# Configure application logging once, at startup. All modules use
+# logging.getLogger("lastminute"); Cloud Run captures stdout.
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s [%(name)s] %(message)s",
+)
+logger = logging.getLogger("lastminute")
+
+from fastapi import FastAPI, HTTPException, Query, Header, UploadFile, File, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse, RedirectResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
@@ -64,22 +73,46 @@ async def health():
 
 # ─── Auth ─────────────────────────────────────────────────────────────────────
 
+# Domains the app is served on. The OAuth flow stays on whichever of these the
+# user is actually using, so login works independently on the custom domain AND
+# the run.app URL (close one, the other still works). Cloudflare's Worker sets
+# X-Forwarded-Host to the custom domain; direct run.app requests use Host.
+_ALLOWED_HOSTS = {
+    "mayank.store",
+    "www.mayank.store",
+    "lastminute-ai-ummt2blwla-el.a.run.app",
+    "lastminute-ai-214061471378.asia-south1.run.app",
+}
+
+
+def _request_base_url(request: Request) -> str:
+    host = (request.headers.get("x-forwarded-host") or request.headers.get("host", "")).split(",")[0].strip()
+    if host.startswith("localhost") or host.startswith("127.0.0.1"):
+        return f"http://{host}"
+    if host in _ALLOWED_HOSTS:
+        return f"https://{host}"
+    # Unknown/unexpected host — fall back to the configured production URL.
+    return os.getenv("FRONTEND_URL", "https://mayank.store")
+
+
 @app.get("/api/auth/login")
-async def login(session_id: Optional[str] = Query(default=None)):
+async def login(request: Request, session_id: Optional[str] = Query(default=None)):
     if not session_id:
         session_id = str(uuid.uuid4())
-    auth_url = calendar_service.get_auth_url(session_id)
+    redirect_uri = f"{_request_base_url(request)}/api/auth/callback/google"
+    auth_url = calendar_service.get_auth_url(session_id, redirect_uri=redirect_uri)
     return {"auth_url": auth_url, "session_id": session_id}
 
 
 @app.get("/api/auth/callback/google")
-async def oauth_callback(code: str, state: str):
+async def oauth_callback(request: Request, code: str, state: str):
     try:
-        user_info = calendar_service.handle_oauth_callback(code, state)
-        frontend = os.getenv("FRONTEND_URL", "http://localhost:5173")
+        base = _request_base_url(request)
+        redirect_uri = f"{base}/api/auth/callback/google"
+        user_info = calendar_service.handle_oauth_callback(code, state, redirect_uri=redirect_uri)
         name = user_info.get("name", "").replace(" ", "%20")
         return RedirectResponse(
-            url=f"{frontend}/dashboard?session_id={state}&user={user_info['email']}&name={name}",
+            url=f"{base}/dashboard?session_id={state}&user={user_info['email']}&name={name}",
             status_code=302,
         )
     except Exception as e:

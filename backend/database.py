@@ -1,3 +1,6 @@
+import logging
+logger = logging.getLogger("lastminute")
+
 """
 Firestore persistence layer.
 """
@@ -279,7 +282,7 @@ def log_activity(session_id: str, action: str, detail: str = "", icon: str = "bo
             "created_at": datetime.utcnow().isoformat(),
         })
     except Exception as e:
-        print(f"[Activity] log failed: {e}")
+        logger.info(f"[Activity] log failed: {e}")
 
 
 def get_activities(session_id: str, limit: int = 20) -> List[dict]:

@@ -1,3 +1,6 @@
+import logging
+logger = logging.getLogger("lastminute")
+
 import os
 import json
 import asyncio
@@ -11,7 +14,7 @@ import database
 def send_push(subscription: dict, title: str, body: str, extra: dict = None) -> bool:
     vapid_private = os.getenv("VAPID_PRIVATE_KEY", "")
     if not vapid_private:
-        print(f"[PUSH] VAPID_PRIVATE_KEY not set — skipping: {title}")
+        logger.info(f"[PUSH] VAPID_PRIVATE_KEY not set — skipping: {title}")
         return False
     try:
         vapid_email = os.getenv("VAPID_CLAIMS_EMAIL", "mailto:admin@lastminuteai.com")
@@ -31,10 +34,10 @@ def send_push(subscription: dict, title: str, body: str, extra: dict = None) -> 
         )
         return True
     except WebPushException as e:
-        print(f"[PUSH] Failed: {e}")
+        logger.info(f"[PUSH] Failed: {e}")
         return False
     except Exception as e:
-        print(f"[PUSH] Error: {e}")
+        logger.info(f"[PUSH] Error: {e}")
         return False
 
 
@@ -104,10 +107,10 @@ def run_reminder_check() -> dict:
                     sent["30m"] += 1
 
             except Exception as e:
-                print(f"[REMINDER] Error processing doc={r.get('id')}: {e}")
+                logger.info(f"[REMINDER] Error processing doc={r.get('id')}: {e}")
 
     except Exception as e:
-        print(f"[REMINDER] Check error: {e}")
+        logger.info(f"[REMINDER] Check error: {e}")
 
     return {"checked": True, "sent": sent}
 

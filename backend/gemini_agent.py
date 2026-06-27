@@ -1,3 +1,6 @@
+import logging
+logger = logging.getLogger("lastminute")
+
 import os
 import re
 import json
@@ -215,9 +218,9 @@ try:
     if _key:
         _genai.configure(api_key=_key)
         _GEMINI_READY = True
-        print(f"[Agent] Chat engine: Google Gemini ({_GEMINI_CHAT_MODEL})")
+        logger.info(f"[Agent] Chat engine: Google Gemini ({_GEMINI_CHAT_MODEL})")
 except Exception as _e:
-    print(f"[Agent] Gemini unavailable, will use fallback engine: {_e}")
+    logger.info(f"[Agent] Gemini unavailable, will use fallback engine: {_e}")
 
 
 def _gemini_text(resp) -> str:
@@ -253,7 +256,7 @@ async def chat_with_agent(message: str, session_id: str) -> AsyncGenerator[str, 
                 yield chunk
             return
         except Exception as e:
-            print(f"[Agent] Gemini chat error, falling back: {e}")
+            logger.info(f"[Agent] Gemini chat error, falling back: {e}")
 
     async for chunk in _run_fallback(message, session_id, history_rows, system):
         yield chunk
@@ -344,7 +347,7 @@ async def _run_fallback(message, session_id, history_rows, system):
 
         yield "I ran into an issue completing that action. Please try again."
     except Exception as e:
-        print(f"[Agent] Fallback engine error: {e}")
+        logger.info(f"[Agent] Fallback engine error: {e}")
         yield "⚠️ Something went wrong. Please try again."
 
 
@@ -438,7 +441,7 @@ async def generate_daily_plan(session_id: str, auto_schedule: bool = True) -> di
                     "html_link": created.get("html_link", ""),
                 }
             except Exception as e:
-                print(f"[DailyPlan] Could not auto-create focus block: {e}")
+                logger.info(f"[DailyPlan] Could not auto-create focus block: {e}")
 
     # ── AI-written brief ──
     ev_lines = "\n".join(
