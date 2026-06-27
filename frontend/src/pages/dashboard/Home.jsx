@@ -199,7 +199,7 @@ function PlanMyDay({ sessionId, isDemo, onTasksUpdated }) {
           className="mt-4 space-y-3"
         >
           {auto && (
-            <span className="badge-green text-xs">⚡ Auto-generated for you today</span>
+            <span className="badge-green text-xs">Auto-generated for you today</span>
           )}
           <div className="bg-accent-light border border-accent-border rounded-lg p-3">
             <p className="text-sm text-accent-text leading-relaxed whitespace-pre-wrap">{plan.brief}</p>

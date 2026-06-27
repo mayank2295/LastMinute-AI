@@ -13,7 +13,7 @@ import ThemeToggle from '../components/ThemeToggle'
 import Tour from '../components/Tour'
 
 const LANDING_TOUR = [
-  { title: 'Welcome to LastMinute AI 👋',
+  { title: 'Welcome to LastMinute AI',
     body: "30-second tour of what makes this different. You can skip anytime." },
   { selector: '[data-tour="cta"]', title: 'In a deadline panic?',
     body: 'Hit this and the AI instantly reads your calendar and builds your rescue plan.' },

@@ -94,7 +94,7 @@ export default function Sidebar({ onClose }) {
   }
 
   return (
-    <aside className="w-[240px] h-full flex flex-col bg-white border-r border-border flex-shrink-0">
+    <aside className="w-full h-full flex flex-col bg-white border-r border-border flex-shrink-0">
       {/* Logo — click to return to the landing page (stays logged in) */}
       <NavLink
         to="/"

@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { Outlet, useLocation } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import Sidebar from '../../components/Sidebar'
@@ -126,6 +126,33 @@ export default function DashboardLayout() {
     refetchInterval: 10 * 60_000,
   })
 
+  // Resizable sidebar — drag the right edge to widen/narrow; width persists.
+  const MIN_W = 200, MAX_W = 380
+  const [sidebarWidth, setSidebarWidth] = useState(() => {
+    const v = Number(localStorage.getItem('lm_sidebar_w'))
+    return v >= MIN_W && v <= MAX_W ? v : 240
+  })
+  const widthRef = useRef(sidebarWidth)
+  const startResize = (e) => {
+    e.preventDefault()
+    document.body.style.userSelect = 'none'
+    document.body.style.cursor = 'col-resize'
+    const onMove = (ev) => {
+      const w = Math.min(MAX_W, Math.max(MIN_W, ev.clientX))
+      widthRef.current = w
+      setSidebarWidth(w)
+    }
+    const onUp = () => {
+      document.removeEventListener('mousemove', onMove)
+      document.removeEventListener('mouseup', onUp)
+      document.body.style.userSelect = ''
+      document.body.style.cursor = ''
+      localStorage.setItem('lm_sidebar_w', String(widthRef.current))
+    }
+    document.addEventListener('mousemove', onMove)
+    document.addEventListener('mouseup', onUp)
+  }
+
   const title      = PAGE_TITLES[location.pathname] || 'Dashboard'
   const score      = prodData?.score
   const scoreColor = score >= 70 ? 'text-accent bg-accent-light border-accent-border'
@@ -134,16 +161,22 @@ export default function DashboardLayout() {
 
   return (
     <div className="h-screen flex overflow-hidden bg-surface">
-      {/* Sidebar — desktop */}
-      <div className="hidden md:flex flex-shrink-0" data-tour="sidebar">
+      {/* Sidebar — desktop (resizable) */}
+      <div className="hidden md:flex flex-shrink-0 relative" data-tour="sidebar" style={{ width: sidebarWidth }}>
         <Sidebar />
+        {/* Drag handle */}
+        <div
+          onMouseDown={startResize}
+          title="Drag to resize"
+          className="absolute top-0 right-0 h-full w-1.5 cursor-col-resize hover:bg-accent/40 active:bg-accent/60 transition-colors"
+        />
       </div>
 
       {/* Sidebar — mobile overlay */}
       {sidebarOpen && (
         <div className="md:hidden fixed inset-0 z-50 flex">
           <div className="fixed inset-0 bg-black/40" onClick={() => setSidebarOpen(false)} />
-          <div className="relative z-10 flex">
+          <div className="relative z-10 flex w-[260px]">
             <Sidebar />
           </div>
         </div>

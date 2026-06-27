@@ -1,4 +1,5 @@
 import { Component } from 'react'
+import { AlertTriangle } from 'lucide-react'
 
 /**
  * Top-level error boundary — if any page throws during render, show a friendly
@@ -23,7 +24,9 @@ export default class ErrorBoundary extends Component {
       return (
         <div className="min-h-screen flex items-center justify-center bg-surface px-6">
           <div className="max-w-md text-center">
-            <div className="w-12 h-12 rounded-xl bg-accent-light border border-accent-border mx-auto mb-4 flex items-center justify-center text-2xl">⚠️</div>
+            <div className="w-12 h-12 rounded-xl bg-accent-light border border-accent-border mx-auto mb-4 flex items-center justify-center">
+              <AlertTriangle className="w-6 h-6 text-accent-text" />
+            </div>
             <h1 className="text-lg font-bold text-primary mb-1">Something went wrong</h1>
             <p className="text-sm text-muted mb-5">
               An unexpected error occurred. Reloading usually fixes it.
