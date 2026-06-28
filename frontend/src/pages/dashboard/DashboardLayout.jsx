@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useRef } from 'react'
+import { useEffect, useState, useCallback, useRef, Suspense } from 'react'
 import { Outlet, useLocation } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import Sidebar from '../../components/Sidebar'
@@ -104,6 +104,17 @@ export default function DashboardLayout() {
 
   useEffect(() => {
     registerServiceWorker()
+  }, [])
+
+  // Prefetch the lazy page chunks shortly after load so switching pages is
+  // instant (the chunk is already cached — no loading spinner on navigation).
+  useEffect(() => {
+    const t = setTimeout(() => {
+      import('./Calendar'); import('./Tasks'); import('./PriorityMatrix')
+      import('./Goals'); import('./FocusTimer'); import('./Reminders')
+      import('./Productivity'); import('./Settings'); import('./Guide')
+    }, 1200)
+    return () => clearTimeout(t)
   }, [])
 
   // Auto-start the tour on the user's first visit to the dashboard home.
@@ -231,9 +242,16 @@ export default function DashboardLayout() {
         {/* Status bar */}
         {user && <StatusBar sessionId={user.sessionId} />}
 
-        {/* Page content */}
-        <main className="flex-1 overflow-auto">
-          <Outlet />
+        {/* Page content — Suspense here so switching pages only shows a small
+            spinner in the content area; the sidebar & top bar stay put (no full-screen flash). */}
+        <main className="flex-1 overflow-auto bg-surface">
+          <Suspense fallback={
+            <div className="h-full flex items-center justify-center">
+              <div className="w-5 h-5 border-2 border-accent border-t-transparent rounded-full animate-spin" />
+            </div>
+          }>
+            <Outlet />
+          </Suspense>
         </main>
       </div>
 
