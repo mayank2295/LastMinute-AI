@@ -245,7 +245,9 @@ async def get_activities(session_id: str, limit: int = Query(default=20)):
 # ─── Cron endpoints (driven by Google Cloud Scheduler) ────────────────────────
 
 def _verify_cron(token: Optional[str]):
-    if CRON_SECRET and token != CRON_SECRET:
+    # Fail closed: reject unless a CRON_SECRET is configured AND matches.
+    # (Previously, an unset CRON_SECRET left these endpoints open.)
+    if not CRON_SECRET or token != CRON_SECRET:
         raise HTTPException(status_code=403, detail="Forbidden")
 
 
