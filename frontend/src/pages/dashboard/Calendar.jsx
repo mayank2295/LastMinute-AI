@@ -19,7 +19,7 @@ function EventRow({ ev, tz }) {
   }
   const barColor = h == null ? 'bg-gray-200'
     : h < 0 ? 'bg-red-500' : h < 2 ? 'bg-red-400'
-    : h < 24 ? 'bg-orange-400' : 'bg-green-400'
+    : h < 24 ? 'bg-orange-400' : 'bg-blue-400'
 
   const fmt = (iso) => new Date(iso).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', timeZone: tz })
 
@@ -52,8 +52,8 @@ function DaySection({ date, events, tz }) {
     <div className="mb-6">
       <div className="flex items-center gap-2 mb-2">
         <p className={`text-xs font-bold ${isToday(date) ? 'text-accent' : 'text-primary'}`}>{label}</p>
-        {isToday(date) && <span className="badge-green text-[10px] px-1.5 py-0">Today</span>}
-        <span className="ml-auto text-[10px] text-muted">{events.length} event{events.length !== 1 ? 's' : ''}</span>
+        {isToday(date) && <span className="badge-blue text-[11px] px-1.5 py-0">Today</span>}
+        <span className="ml-auto text-[11px] text-muted">{events.length} event{events.length !== 1 ? 's' : ''}</span>
       </div>
       <div className="bg-white border border-border rounded-2xl shadow-sm px-3">
         {events.length === 0

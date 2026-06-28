@@ -8,7 +8,7 @@ function ScoreGauge({ score }) {
   const circ  = Math.PI * r  // half circle
   const pct   = (score || 0) / 100
   const offset = circ * (1 - pct)
-  const color = score >= 70 ? '#16a34a' : score >= 40 ? '#f97316' : '#dc2626'
+  const color = score >= 80 ? '#2563eb' : score >= 60 ? '#f59e0b' : score >= 40 ? '#f97316' : '#ef4444'
 
   return (
     <div className="flex flex-col items-center">
@@ -30,7 +30,7 @@ function ScoreGauge({ score }) {
   )
 }
 
-function Bar({ value, max = 100, color = '#16a34a' }) {
+function Bar({ value, max = 100, color = '#2563eb' }) {
   return (
     <div className="h-6 bg-gray-100 rounded-md overflow-hidden">
       <div
@@ -78,11 +78,11 @@ export default function Productivity() {
           <p className="text-xs text-muted leading-relaxed">{analysis}</p>
           <div className="flex gap-4 mt-4">
             <div>
-              <p className="text-[10px] text-muted uppercase tracking-wide mb-1">Focus time available</p>
+              <p className="text-[11px] text-muted uppercase tracking-wide mb-1">Focus time available</p>
               <p className="text-sm font-bold text-primary">{focusH}h {focusM}m</p>
             </div>
             <div>
-              <p className="text-[10px] text-muted uppercase tracking-wide mb-1">Meeting load</p>
+              <p className="text-[11px] text-muted uppercase tracking-wide mb-1">Meeting load</p>
               <p className="text-sm font-bold text-primary">{meetingPct}%</p>
             </div>
           </div>
@@ -98,7 +98,7 @@ export default function Productivity() {
               <span>Focus time</span>
               <span>{focusH}h {focusM}m</span>
             </div>
-            <Bar value={focus_time_available || 0} max={480} color="#16a34a" />
+            <Bar value={focus_time_available || 0} max={480} color="#2563eb" />
           </div>
           <div>
             <div className="flex justify-between text-[11px] text-muted mb-1">
@@ -112,7 +112,7 @@ export default function Productivity() {
               <span>Overall score</span>
               <span>{score}/100</span>
             </div>
-            <Bar value={score || 0} max={100} color={score >= 70 ? '#16a34a' : score >= 40 ? '#f97316' : '#dc2626'} />
+            <Bar value={score || 0} max={100} color={score >= 80 ? '#2563eb' : score >= 60 ? '#f59e0b' : score >= 40 ? '#f97316' : '#ef4444'} />
           </div>
         </div>
       </div>
@@ -121,7 +121,7 @@ export default function Productivity() {
       {recommendations?.length > 0 && (
         <div className="bg-white border border-border rounded-2xl shadow-sm p-4">
           <div className="flex items-center gap-2 mb-3">
-            <Lightbulb className="w-4 h-4 text-amber-500" />
+            <Lightbulb className="w-4 h-4 text-accent" />
             <p className="text-xs font-semibold text-primary">AI Recommendations</p>
           </div>
           <div className="space-y-2">

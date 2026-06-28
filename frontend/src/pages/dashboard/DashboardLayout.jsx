@@ -202,7 +202,7 @@ export default function DashboardLayout() {
               title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}>
               <PanelLeft className="w-4 h-4" />
             </button>
-            <h1 className="font-bold text-lg text-primary ml-1">{title}</h1>
+            <h1 className="font-semibold text-xl text-primary ml-1">{title}</h1>
           </div>
           <div className="flex items-center gap-2.5">
             {firstName && (

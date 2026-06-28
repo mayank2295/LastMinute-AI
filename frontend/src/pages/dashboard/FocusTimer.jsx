@@ -14,7 +14,7 @@ function Ring({ pct, isBreak }) {
   const r    = 90
   const circ = 2 * Math.PI * r
   const offset = circ * (1 - pct)
-  const color  = isBreak ? '#3b82f6' : '#16a34a'
+  const color  = isBreak ? '#60a5fa' : '#2563eb'   // lighter blue on break, blue on focus
   return (
     <svg viewBox="0 0 220 220" width="220" height="220">
       <circle cx="110" cy="110" r={r} fill="none" stroke="#e5e7eb" strokeWidth="12" />
@@ -145,7 +145,7 @@ export default function FocusTimer() {
                   key={m.id}
                   onClick={() => changeMode(i)}
                   className={`flex-1 py-2 rounded-lg text-xs font-semibold transition-all ${
-                    modeIdx === i ? 'bg-primary text-white' : 'bg-subtle text-muted hover:bg-gray-100'
+                    modeIdx === i ? 'bg-accent text-white' : 'bg-subtle text-muted hover:bg-gray-100'
                   }`}
                 >
                   {m.label} {m.work}/{m.brk}
@@ -193,7 +193,7 @@ export default function FocusTimer() {
               <button
                 onClick={() => { requestNotifPerm(); setRunning(r => !r) }}
                 className={`w-16 h-16 rounded-full flex items-center justify-center text-white shadow-sm transition-all active:scale-95 ${
-                  isBreak ? 'bg-blue-500 hover:bg-blue-600' : 'bg-primary hover:bg-gray-800'
+                  isBreak ? 'bg-blue-400 hover:bg-blue-500' : 'bg-accent hover:bg-accent-hover'
                 }`}
               >
                 {running ? <Pause className="w-7 h-7" /> : <Play className="w-7 h-7 ml-0.5" />}

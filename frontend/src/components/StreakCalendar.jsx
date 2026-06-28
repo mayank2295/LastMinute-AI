@@ -5,7 +5,7 @@ const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June',
   'July', 'August', 'September', 'October', 'November', 'December']
 
-const DONE_BG = 'rgba(22,163,74,0.95)'      // accent green
+const DONE_BG = 'rgba(37,99,235,0.95)'      // blue-600 — completed
 const MISS_BG = 'rgba(239,68,68,0.12)'      // subtle red, theme-safe
 const MISS_FG = 'rgba(239,68,68,0.85)'
 
@@ -80,7 +80,7 @@ export default function StreakCalendar({ dates = [], startDate }) {
       </div>
 
       <div className="grid grid-cols-7 gap-1 text-center">
-        {DAYS.map(d => <div key={d} className="text-[10px] font-semibold text-muted pb-1">{d}</div>)}
+        {DAYS.map(d => <div key={d} className="text-[11px] font-semibold text-muted pb-1">{d}</div>)}
         {cells.map((d, i) => cell(d, i))}
       </div>
 

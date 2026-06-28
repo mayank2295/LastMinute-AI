@@ -27,7 +27,7 @@ const BORDER_COLOR = {
 }
 
 const SOURCE_BADGE = {
-  ai:       'badge-green',
+  ai:       'badge-blue',
   manual:   'badge-gray',
   calendar: 'badge-blue',
 }
@@ -183,7 +183,7 @@ function AddTaskModal({ sessionId, onClose, onAdded }) {
                   onClick={() => setMins(mins === t.value ? null : t.value)}
                   className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
                     mins === t.value
-                      ? 'bg-primary text-white border-primary'
+                      ? 'bg-accent text-white border-accent'
                       : 'border-border text-gray-500 hover:border-gray-400'
                   }`}
                 >
@@ -269,7 +269,7 @@ function TaskCard({ task, onDone, onDelete }) {
         <div className="absolute right-3 top-3 flex items-center gap-1.5">
           <button
             onClick={() => onDone(task.id)}
-            className="flex items-center gap-1 text-xs bg-accent-light text-accent-text border border-accent-border rounded-md px-2 py-1 hover:bg-green-100 transition-colors"
+            className="flex items-center gap-1 text-xs bg-accent-light text-accent-text border border-accent-border rounded-md px-2 py-1 hover:bg-blue-100 transition-colors"
           >
             <CheckCircle2 className="w-3 h-3" /> Done
           </button>
@@ -359,7 +359,7 @@ export default function Tasks() {
                 key={f}
                 onClick={() => setFilter(f)}
                 className={`px-3 py-1 rounded-md text-xs font-medium transition-all ${
-                  filter === f ? 'bg-primary text-white shadow-sm' : 'text-muted hover:text-primary'
+                  filter === f ? 'bg-accent text-white shadow-sm' : 'text-muted hover:text-primary'
                 }`}
               >
                 {f}

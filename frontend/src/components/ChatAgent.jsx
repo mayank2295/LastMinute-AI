@@ -85,9 +85,9 @@ export default function ChatAgent({ onTasksUpdated }) {
         </div>
         <div>
           <p className="text-xs font-semibold text-primary">AI Agent</p>
-          <p className="text-[10px] text-muted">Google Gemini · Function Calling</p>
+          <p className="text-[11px] text-muted">Google Gemini · Function Calling</p>
         </div>
-        <div className="ml-auto flex items-center gap-1.5 text-[10px] text-muted">
+        <div className="ml-auto flex items-center gap-1.5 text-[11px] text-muted">
           <span className="w-1.5 h-1.5 rounded-full bg-accent" />
           Live
         </div>
@@ -145,7 +145,7 @@ export default function ChatAgent({ onTasksUpdated }) {
             <Send className="w-3.5 h-3.5" />
           </button>
         </div>
-        <p className="text-[10px] text-muted mt-1.5 px-1">Enter to send · Shift+Enter for newline</p>
+        <p className="text-[11px] text-muted mt-1.5 px-1">Enter to send · Shift+Enter for newline</p>
       </div>
     </div>
   )

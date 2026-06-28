@@ -48,7 +48,7 @@ export default function UserMenu() {
               <p className="text-sm font-semibold text-primary truncate">{user?.name || 'User'}</p>
               <p className="text-xs text-muted truncate">{user?.email}</p>
               {isDemo && (
-                <span className="inline-block mt-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-accent-light text-accent-text border border-accent-border">
+                <span className="inline-block mt-1 text-[11px] font-semibold px-1.5 py-0.5 rounded-full bg-accent-light text-accent-text border border-accent-border">
                   Demo mode
                 </span>
               )}

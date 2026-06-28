@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { getReminders } from '../../services/api'
 import { useAuth } from '../../context/AuthContext'
-import { Bell, Clock, CheckCircle2 } from 'lucide-react'
+import { Bell, Clock, CheckCircle2, Sparkles } from 'lucide-react'
 import { format, parseISO, isValid } from 'date-fns'
 
 function ReminderRow({ r }) {
@@ -62,6 +62,18 @@ export default function Reminders() {
         <button onClick={() => refetch()} className="btn-outline text-xs py-1 px-3">Refresh</button>
       </div>
 
+      {/* How reminders work — set via the AI agent */}
+      <div className="flex items-start gap-3 bg-accent-light border border-accent-border rounded-2xl p-4 mb-5">
+        <Sparkles className="w-5 h-5 text-accent flex-shrink-0 mt-0.5" />
+        <div>
+          <p className="text-sm font-semibold text-primary">Set reminders with the AI agent</p>
+          <p className="text-xs text-muted mt-0.5">
+            Ask the agent “remind me about my report 2 hours before it's due” — it schedules
+            escalating push alerts (24h / 2h / 30 min) automatically.
+          </p>
+        </div>
+      </div>
+
       {isLoading && (
         <div className="space-y-3">{[1,2,3].map(i => <div key={i} className="skeleton h-24 rounded-xl" />)}</div>
       )}
@@ -75,7 +87,7 @@ export default function Reminders() {
 
       {!isLoading && !isError && reminders.length === 0 && (
         <div className="text-center py-16">
-          <Bell className="w-10 h-10 text-gray-200 mx-auto mb-3" />
+          <Bell className="w-10 h-10 text-accent mx-auto mb-3" />
           <p className="text-sm font-medium text-primary mb-1">No reminders set</p>
           <p className="text-xs text-muted">Ask the AI "set a reminder for my deadline" to create escalating push notifications.</p>
         </div>

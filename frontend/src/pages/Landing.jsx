@@ -47,16 +47,16 @@ function ProductPreview() {
         <div className="flex bg-[#0f0f0f]" style={{ minHeight: 360 }}>
           <div className="w-44 flex-shrink-0 bg-[#111] border-r border-white/10 p-3 hidden sm:block">
             <div className="flex items-center gap-2 mb-5 pb-3 border-b border-white/10">
-              <div className="w-5 h-5 rounded bg-green-500 flex items-center justify-center flex-shrink-0">
-                <Zap className="w-3 h-3 text-black" />
+              <div className="w-5 h-5 rounded bg-blue-500 flex items-center justify-center flex-shrink-0">
+                <Zap className="w-3 h-3 text-white" />
               </div>
               <span className="text-xs font-semibold text-white">LastMinute AI</span>
             </div>
             {[{ n: 'Dashboard', active: true }, { n: 'My Tasks' }, { n: 'Game Plan' }, { n: 'Focus Timer' }].map(item => (
               <div key={item.n}
                 className={`flex items-center gap-2 px-2.5 py-2 rounded-lg text-[11px] mb-0.5 ${
-                  item.active ? 'bg-green-900/40 text-green-400 font-medium' : 'text-gray-600'}`}>
-                <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${item.active ? 'bg-green-500' : 'bg-gray-700'}`} />
+                  item.active ? 'bg-blue-900/40 text-blue-400 font-medium' : 'text-gray-600'}`}>
+                <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${item.active ? 'bg-blue-500' : 'bg-gray-700'}`} />
                 {item.n}
               </div>
             ))}
@@ -64,7 +64,7 @@ function ProductPreview() {
           <div className="flex-1 flex flex-col overflow-hidden">
             <div className="h-11 flex items-center justify-between px-4 border-b border-white/10 flex-shrink-0">
               <span className="text-xs font-semibold text-white">Dashboard</span>
-              <span className="text-[10px] text-green-400 bg-green-900/30 border border-green-600/20 px-2 py-0.5 rounded-full">Score 82/100</span>
+              <span className="text-[10px] text-blue-400 bg-blue-900/30 border border-blue-600/20 px-2 py-0.5 rounded-full">Score 82/100</span>
             </div>
             <div className="flex items-center gap-2 px-4 py-2.5 bg-red-900/20 border-b border-red-500/20 flex-shrink-0">
               <div className="w-2 h-2 rounded-full bg-red-500 flex-shrink-0" style={{ animation: 'pulse 1.5s infinite' }} />
@@ -78,12 +78,12 @@ function ProductPreview() {
                 <div className="w-6 h-6 rounded-full bg-gray-700 flex-shrink-0 flex items-center justify-center text-[10px] text-white font-bold">M</div>
               </div>
               <div className="flex gap-2">
-                <div className="w-6 h-6 rounded-full bg-green-900 border border-green-700 flex-shrink-0 flex items-center justify-center">
-                  <Zap className="w-3 h-3 text-green-400" />
+                <div className="w-6 h-6 rounded-full bg-blue-900 border border-blue-700 flex-shrink-0 flex items-center justify-center">
+                  <Zap className="w-3 h-3 text-blue-400" />
                 </div>
                 <div className="bg-[#1a1a1a] border border-white/10 rounded-xl rounded-tl-sm px-3 py-2.5 text-[11px] max-w-[80%]">
                   <div className="flex items-center gap-1.5 mb-2 flex-wrap">
-                    <span className="bg-green-900/60 text-green-400 border border-green-700/40 text-[9px] font-mono rounded px-1.5 py-0.5">✓ create_calendar_event</span>
+                    <span className="bg-blue-900/60 text-blue-400 border border-blue-700/40 text-[9px] font-mono rounded px-1.5 py-0.5">✓ create_calendar_event</span>
                     <span className="bg-blue-900/60 text-blue-400 border border-blue-700/40 text-[9px] font-mono rounded px-1.5 py-0.5">✓ prioritize_tasks</span>
                     <span className="bg-purple-900/60 text-purple-400 border border-purple-700/40 text-[9px] font-mono rounded px-1.5 py-0.5">✓ set_reminder</span>
                   </div>
@@ -105,8 +105,8 @@ function Navbar({ onStart, onTour, user, onDashboard, C }) {
   return (
     <nav className="w-full flex items-center justify-between px-6 py-4 relative z-20">
       <div className="flex items-center gap-2.5">
-        <div className="w-8 h-8 bg-green-500 rounded-lg flex items-center justify-center">
-          <Zap className="w-4 h-4 text-black" />
+        <div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center">
+          <Zap className="w-4 h-4 text-white" />
         </div>
         <span className="font-bold text-base tracking-tight" style={{ color: C.text }}>LastMinute AI</span>
       </div>
@@ -124,7 +124,7 @@ function Navbar({ onStart, onTour, user, onDashboard, C }) {
         <ThemeToggle />
         {user ? (
           <button onClick={onDashboard}
-            className="flex items-center gap-1.5 px-4 py-2 text-sm bg-green-500 text-black rounded-lg font-semibold hover:bg-green-400 transition-colors">
+            className="flex items-center gap-1.5 px-4 py-2 text-sm bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-colors">
             Go to Dashboard <ArrowRight className="w-4 h-4" />
           </button>
         ) : (
@@ -135,7 +135,7 @@ function Navbar({ onStart, onTour, user, onDashboard, C }) {
               Sign in
             </Link>
             <button onClick={onStart}
-              className="px-4 py-2 text-sm bg-green-500 text-black rounded-lg font-semibold hover:bg-green-400 transition-colors">
+              className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-colors">
               Get started
             </button>
           </>
@@ -159,16 +159,16 @@ export default function Landing() {
     cardBg: '#16161a', cardBorder: 'rgba(255,255,255,0.09)',
     navText: '#cbd5e1', navBorder: 'rgba(255,255,255,0.22)',
     chipBg: 'rgba(255,255,255,0.06)', chipBorder: 'rgba(255,255,255,0.16)',
-    glow: 'rgba(22,163,74,0.16)', grid: 'rgba(255,255,255,0.05)',
-    blobA: 'rgba(22,163,74,0.30)', blobB: 'rgba(59,130,246,0.18)',
+    glow: 'rgba(37,99,235,0.16)', grid: 'rgba(255,255,255,0.05)',
+    blobA: 'rgba(37,99,235,0.30)', blobB: 'rgba(59,130,246,0.18)',
   } : {
     heroBg: '#f6faf8', panel: '#ffffff', sectionBg: '#ffffff', sectionAlt: '#f5f8f6',
     text: '#0a0a0a', sub: '#475569', faint: '#64748b',
     cardBg: '#ffffff', cardBorder: '#e5e7eb',
     navText: '#334155', navBorder: 'rgba(0,0,0,0.14)',
-    chipBg: 'rgba(22,163,74,0.08)', chipBorder: 'rgba(22,163,74,0.28)',
-    glow: 'rgba(22,163,74,0.12)', grid: 'rgba(0,0,0,0.05)',
-    blobA: 'rgba(22,163,74,0.22)', blobB: 'rgba(59,130,246,0.12)',
+    chipBg: 'rgba(37,99,235,0.08)', chipBorder: 'rgba(37,99,235,0.28)',
+    glow: 'rgba(37,99,235,0.12)', grid: 'rgba(0,0,0,0.05)',
+    blobA: 'rgba(37,99,235,0.22)', blobB: 'rgba(59,130,246,0.12)',
   }
 
   const goDashboard = () => navigate('/dashboard')
@@ -224,8 +224,8 @@ export default function Landing() {
         <section className="relative z-10 max-w-5xl mx-auto px-6 pt-16 pb-6 text-center">
           <motion.div {...fadeUp(0)}
             className="inline-flex items-center gap-2 rounded-full px-4 py-2 text-xs font-medium mb-8"
-            style={{ background: C.chipBg, border: `1px solid ${C.chipBorder}`, color: '#16a34a' }}>
-            <span className="w-1.5 h-1.5 rounded-full bg-green-500" style={{ animation: 'pulse 1.5s infinite' }} />
+            style={{ background: C.chipBg, border: `1px solid ${C.chipBorder}`, color: '#2563eb' }}>
+            <span className="w-1.5 h-1.5 rounded-full bg-blue-500" style={{ animation: 'pulse 1.5s infinite' }} />
             Live · Google Gemini + Google Calendar + Cloud Run
           </motion.div>
 
@@ -233,7 +233,7 @@ export default function Landing() {
             className="font-extrabold leading-[1.05] tracking-tight mb-6"
             style={{ fontSize: 'clamp(44px, 7vw, 76px)', color: C.text }}>
             Stop panicking.<br />
-            <span className="text-green-500">Start executing.</span>
+            <span className="text-blue-500">Start executing.</span>
           </motion.h1>
 
           <motion.p {...fadeUp(0.16)}
@@ -263,7 +263,7 @@ export default function Landing() {
           <div className="flex items-center justify-center gap-5 flex-wrap text-xs" style={{ color: C.faint }}>
             {['No login for demo', 'Real AI + Google Calendar', 'Free forever', 'Data stays in your account'].map(t => (
               <span key={t} className="flex items-center gap-1.5">
-                <Check className="w-3.5 h-3.5 text-green-500" /> {t}
+                <Check className="w-3.5 h-3.5 text-blue-500" /> {t}
               </span>
             ))}
           </div>
@@ -284,7 +284,7 @@ export default function Landing() {
           ].map(s => (
             <div key={s.label} className="flex items-center gap-3">
               <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: C.chipBg }}>
-                <s.icon className="w-4 h-4 text-green-500" />
+                <s.icon className="w-4 h-4 text-blue-500" />
               </div>
               <div>
                 <p className="text-sm font-semibold" style={{ color: C.text }}>{s.label}</p>
@@ -299,12 +299,12 @@ export default function Landing() {
       <section id="how" className="py-24 px-6" style={{ background: C.sectionBg }}>
         <div className="max-w-4xl mx-auto">
           <motion.div {...fadeUp(0)} viewport={{ once: true }} className="text-center mb-16">
-            <p className="text-xs font-bold uppercase tracking-widest text-green-600 mb-3">How it works</p>
+            <p className="text-xs font-bold uppercase tracking-widest text-blue-600 mb-3">How it works</p>
             <h2 className="text-4xl font-bold" style={{ color: C.text }}>From panic to plan in 30 seconds</h2>
           </motion.div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {[
-              { n: '01', glow: 'rgba(22,163,74,0.15)', color: '#16a34a', title: 'Connect Google Calendar', desc: 'One click OAuth2 sign-in. The AI reads your real deadlines — not demo data, your actual schedule.' },
+              { n: '01', glow: 'rgba(37,99,235,0.15)', color: '#2563eb', title: 'Connect Google Calendar', desc: 'One click OAuth2 sign-in. The AI reads your real deadlines — not demo data, your actual schedule.' },
               { n: '02', glow: 'rgba(59,130,246,0.15)', color: '#3b82f6', title: "Tell the AI what's stressing you", desc: '"I have a presentation in 2 hours and haven\'t started." The AI already knows your calendar context.' },
               { n: '03', glow: 'rgba(239,68,68,0.15)', color: '#ef4444', title: 'AI executes — you focus', desc: 'Calendar events created, focus time blocked, tasks prioritised, reminders set. You execute the plan.' },
             ].map((s, i) => (
@@ -325,12 +325,12 @@ export default function Landing() {
       <section id="features" data-tour="features" className="py-24 px-6" style={{ background: C.sectionAlt }}>
         <div className="max-w-5xl mx-auto">
           <motion.div {...fadeUp(0)} viewport={{ once: true }} className="text-center mb-16">
-            <p className="text-xs font-bold uppercase tracking-widest text-green-600 mb-3">Features</p>
+            <p className="text-xs font-bold uppercase tracking-widest text-blue-600 mb-3">Features</p>
             <h2 className="text-4xl font-bold" style={{ color: C.text }}>Built for deadlines, not to-do lists</h2>
           </motion.div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
             {[
-              { icon: Calendar, ic: '#16a34a', title: 'Live Calendar Sync', desc: 'Real events from Google Calendar, not mock data. Countdowns, overdue flags, and urgency colours in real time.' },
+              { icon: Calendar, ic: '#2563eb', title: 'Live Calendar Sync', desc: 'Real events from Google Calendar, not mock data. Countdowns, overdue flags, and urgency colours in real time.' },
               { icon: Bot, ic: '#3b82f6', title: 'Agentic Gemini AI', desc: 'Five real function-calling tools: create events, prioritise tasks, set reminders, schedule focus blocks, score your day.' },
               { icon: Grid, ic: '#a855f7', title: 'Smart Game Plan', desc: 'A ranked, time-bucketed action queue that tells you exactly what to do next. Persists to Firebase.' },
               { icon: Bell, ic: '#f97316', title: 'Escalating Alerts', desc: 'Push + email at 24h → 2h → 1h → 30 min before every deadline. Driven by Cloud Scheduler, no tab open needed.' },
@@ -359,7 +359,7 @@ export default function Landing() {
       <section id="why" className="py-24 px-6" style={{ background: C.sectionBg }}>
         <div className="max-w-4xl mx-auto">
           <motion.div {...fadeUp(0)} viewport={{ once: true }} className="text-center mb-14">
-            <p className="text-xs font-bold uppercase tracking-widest text-green-600 mb-3">Why not just use ChatGPT?</p>
+            <p className="text-xs font-bold uppercase tracking-widest text-blue-600 mb-3">Why not just use ChatGPT?</p>
             <h2 className="text-4xl font-bold" style={{ color: C.text }}>This actually does things</h2>
           </motion.div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -373,7 +373,7 @@ export default function Landing() {
                 <p className="text-sm line-through mb-4 leading-relaxed" style={{ color: C.faint }}>{c.bad}</p>
                 <div className="h-px mb-4" style={{ background: C.cardBorder }} />
                 <p className="text-sm font-medium leading-relaxed flex items-start gap-2" style={{ color: C.text }}>
-                  <span className="text-green-500 font-bold flex-shrink-0">✓</span>{c.good}
+                  <span className="text-blue-500 font-bold flex-shrink-0">✓</span>{c.good}
                 </p>
               </motion.div>
             ))}
@@ -408,8 +408,8 @@ export default function Landing() {
       <footer className="py-6 px-6" style={{ background: C.sectionAlt, borderTop: `1px solid ${C.cardBorder}` }}>
         <div className="max-w-5xl mx-auto flex items-center justify-between flex-wrap gap-4">
           <div className="flex items-center gap-2">
-            <div className="w-6 h-6 bg-green-500 rounded flex items-center justify-center">
-              <Zap className="w-3 h-3 text-black" />
+            <div className="w-6 h-6 bg-blue-500 rounded flex items-center justify-center">
+              <Zap className="w-3 h-3 text-white" />
             </div>
             <span className="text-sm font-semibold" style={{ color: C.text }}>LastMinute AI</span>
           </div>

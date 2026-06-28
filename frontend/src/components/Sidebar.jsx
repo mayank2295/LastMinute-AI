@@ -44,7 +44,7 @@ function NavItem({ item, taskCount, reminderCount, collapsed }) {
       end={item.to === '/dashboard'}
       data-tour={item.dataTour}
       title={collapsed ? item.label : undefined}
-      className={({ isActive }) => `${base} ${isActive ? 'bg-accent-light text-accent-text font-semibold' : 'text-gray-500 hover:bg-subtle hover:text-primary'}`}
+      className={({ isActive }) => `${base} ${isActive ? 'bg-blue-100 text-blue-700 font-semibold' : 'text-slate-600 hover:bg-subtle hover:text-primary'}`}
     >
       {({ isActive }) => (
         <>
@@ -52,15 +52,15 @@ function NavItem({ item, taskCount, reminderCount, collapsed }) {
           <item.icon style={{ width: 18, height: 18 }} className="flex-shrink-0" />
           {!collapsed && <span className="flex-1 truncate">{item.label}</span>}
           {!collapsed && item.badgeGreen && (
-            <span className="flex items-center gap-1 text-[10px] font-semibold text-accent bg-accent-light border border-accent-border rounded-full px-1.5 py-0.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-accent" /> Live
+            <span className="flex items-center gap-1 text-[11px] font-semibold text-green-700 bg-green-50 border border-green-200 rounded-full px-1.5 py-0.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-green-500" /> Live
             </span>
           )}
           {!collapsed && item.taskCount && taskCount > 0 && (
-            <span className="text-[10px] font-semibold bg-primary text-white rounded-full px-1.5 py-0.5 min-w-[18px] text-center">{taskCount}</span>
+            <span className="text-[11px] font-semibold bg-primary text-white rounded-full px-1.5 py-0.5 min-w-[18px] text-center">{taskCount}</span>
           )}
           {!collapsed && item.reminderCount && reminderCount > 0 && (
-            <span className="text-[10px] font-semibold bg-orange-500 text-white rounded-full px-1.5 py-0.5 min-w-[18px] text-center">{reminderCount}</span>
+            <span className="text-[11px] font-semibold bg-orange-500 text-white rounded-full px-1.5 py-0.5 min-w-[18px] text-center">{reminderCount}</span>
           )}
         </>
       )}
@@ -88,7 +88,7 @@ export default function Sidebar({ collapsed = false }) {
   const handleLogout = () => { logout(); navigate('/') }
 
   return (
-    <aside className="w-full h-full flex flex-col bg-white border-r border-border flex-shrink-0">
+    <aside className="w-full h-full flex flex-col bg-surface border-r border-border flex-shrink-0">
       {/* Brand — click to return to the landing page (stays logged in) */}
       <NavLink
         to="/"
@@ -106,7 +106,7 @@ export default function Sidebar({ collapsed = false }) {
         {SECTIONS.map(section => (
           <div key={section.label}>
             {!collapsed
-              ? <p className="px-3 mb-2 text-[11px] font-bold uppercase tracking-widest text-gray-400">{section.label}</p>
+              ? <p className="px-3 mb-2 text-[11px] font-bold uppercase tracking-widest text-slate-400">{section.label}</p>
               : <div className="mx-2 mb-2 border-t border-border" />}
             <div className="space-y-0.5">
               {section.items.map(item => (

@@ -37,7 +37,7 @@ function ActivityFeed({ sessionId }) {
       <div className="flex items-center gap-2 mb-3">
         <Activity className="w-4 h-4 text-accent" />
         <p className="text-sm font-semibold text-primary">Agent activity</p>
-        <span className="badge-green text-xs ml-auto">Autonomous</span>
+        <span className="badge-blue text-xs ml-auto">Autonomous</span>
       </div>
       <div className="space-y-2.5 max-h-56 overflow-y-auto">
         {items.map(a => {
@@ -199,7 +199,7 @@ function PlanMyDay({ sessionId, isDemo, onTasksUpdated }) {
           className="mt-4 space-y-3"
         >
           {auto && (
-            <span className="badge-green text-xs">Auto-generated for you today</span>
+            <span className="badge-blue text-xs">Auto-generated for you today</span>
           )}
           <div className="bg-accent-light border border-accent-border rounded-lg p-3">
             <p className="text-sm text-accent-text leading-relaxed whitespace-pre-wrap">{plan.brief}</p>
@@ -227,7 +227,7 @@ function PlanMyDay({ sessionId, isDemo, onTasksUpdated }) {
           ) : null}
 
           <p className="text-xs text-muted flex items-center gap-1.5">
-            <span className="badge-green">{plan.provider === 'gemini' ? 'Powered by Gemini' : 'AI'}</span>
+            <span className="badge-blue">{plan.provider === 'gemini' ? 'Powered by Gemini' : 'AI'}</span>
             {plan.events_today} event(s) · {plan.open_tasks} open task(s)
           </p>
         </motion.div>

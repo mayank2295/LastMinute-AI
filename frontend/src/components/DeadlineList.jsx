@@ -124,7 +124,7 @@ export default function DeadlineList() {
 
         {Object.entries(groups).map(([label, evs]) => (
           <div key={label}>
-            <p className="text-[10px] font-semibold uppercase tracking-widest text-muted mb-2">{label}</p>
+            <p className="text-[11px] font-semibold uppercase tracking-widest text-muted mb-2">{label}</p>
             <div className="space-y-1.5">
               {evs.map(ev => <EventCard key={ev.id} ev={ev} tz={tz} />)}
             </div>

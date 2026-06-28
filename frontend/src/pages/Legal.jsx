@@ -9,16 +9,16 @@ const APP_NAME = 'LastMinute AI'
 function LegalLayout({ title, children }) {
   const { isDark } = useTheme()
   const C = isDark
-    ? { bg: '#0a0a0a', panel: '#111114', text: '#ffffff', sub: '#cbd5e1', faint: '#94a3b8', border: 'rgba(255,255,255,0.09)', link: '#4ade80' }
-    : { bg: '#f6faf8', panel: '#ffffff', text: '#0a0a0a', sub: '#334155', faint: '#64748b', border: '#e5e7eb', link: '#15803d' }
+    ? { bg: '#0a0a0a', panel: '#111114', text: '#ffffff', sub: '#cbd5e1', faint: '#94a3b8', border: 'rgba(255,255,255,0.09)', link: '#60a5fa' }
+    : { bg: '#f6faf8', panel: '#ffffff', text: '#0a0a0a', sub: '#334155', faint: '#64748b', border: '#e5e7eb', link: '#1d4ed8' }
 
   return (
     <div style={{ background: C.bg, color: C.text, minHeight: '100vh' }}>
       {/* Nav */}
       <nav className="px-6 py-4 flex items-center justify-between max-w-3xl mx-auto">
         <Link to="/" className="flex items-center gap-2">
-          <div className="w-7 h-7 bg-green-500 rounded flex items-center justify-center">
-            <Zap className="w-4 h-4 text-black" />
+          <div className="w-7 h-7 bg-blue-500 rounded flex items-center justify-center">
+            <Zap className="w-4 h-4 text-white" />
           </div>
           <span className="font-semibold" style={{ color: C.text }}>{APP_NAME}</span>
         </Link>
