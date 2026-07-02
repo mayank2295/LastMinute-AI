@@ -7,7 +7,10 @@ async function req(method, path, body) {
   const resp = await fetch(path, opts)
   if (!resp.ok) {
     const err = await resp.json().catch(() => ({ detail: resp.statusText }))
-    const e = new Error(err.detail || 'Request failed')
+    // FastAPI validation errors return detail as an array of objects — stringify
+    // so the message is readable instead of "[object Object]".
+    const detail = typeof err.detail === 'string' ? err.detail : JSON.stringify(err.detail)
+    const e = new Error(detail || 'Request failed')
     e.status = resp.status
     throw e
   }
@@ -103,6 +106,8 @@ export const getReminders = (sid) => req('GET', `/api/reminders/${sid}`)
 export const getVapidKey  = ()    => req('GET', '/api/notifications/vapid-key')
 export const subscribeNotification = (sid, sub, title, deadline) =>
   req('POST', `/api/notifications/subscribe/${sid}`, { subscription: sub, task_title: title, deadline })
+export const savePushSubscription = (sid, sub) =>
+  req('POST', `/api/notifications/push-subscribe/${sid}`, { subscription: sub })
 
 // ─── Goals & Habits ─────────────────────────────────────────────────────────────
 export const getGoals      = (sid)           => req('GET',    `/api/goals/${sid}`)

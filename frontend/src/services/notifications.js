@@ -1,4 +1,4 @@
-import { getVapidKey, subscribeNotification } from './api'
+import { getVapidKey, subscribeNotification, savePushSubscription } from './api'
 
 function urlBase64ToUint8Array(base64String) {
   const padding = '='.repeat((4 - (base64String.length % 4)) % 4)
@@ -39,7 +39,13 @@ export async function subscribeToPush(sessionId, taskTitle, deadline) {
       applicationServerKey: urlBase64ToUint8Array(publicKey),
     })
 
-    await subscribeNotification(sessionId, sub.toJSON(), taskTitle, deadline)
+    if (taskTitle && deadline) {
+      // Task-specific reminder (24h/2h/1h/30m escalation for one deadline)
+      await subscribeNotification(sessionId, sub.toJSON(), taskTitle, deadline)
+    } else {
+      // General enable (Settings page) — store the subscription on the session
+      await savePushSubscription(sessionId, sub.toJSON())
+    }
     return true
   } catch (e) {
     console.warn('[Push] Subscribe failed:', e)
