@@ -412,7 +412,13 @@ def checkin_habit(habit_id: str, session_id: str) -> Optional[dict]:
     if not doc.exists or doc.to_dict().get("session_id") != session_id:
         return None
     h = doc.to_dict()
-    today = datetime.utcnow().date()
+    # "Today" must be the USER's local date, not UTC — otherwise a check-in
+    # before 5:30 AM IST is credited to yesterday and breaks the streak.
+    try:
+        from zoneinfo import ZoneInfo
+        today = datetime.now(ZoneInfo(get_user_timezone(session_id))).date()
+    except Exception:
+        today = datetime.utcnow().date()
     today_str = today.isoformat()
     last = h.get("last_checkin", "")
     if last == today_str:

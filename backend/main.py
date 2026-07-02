@@ -3,6 +3,7 @@ import uuid
 import json
 import asyncio
 import logging
+import urllib.parse
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from typing import Optional
@@ -111,9 +112,12 @@ async def oauth_callback(request: Request, code: str, state: str):
         base = _request_base_url(request)
         redirect_uri = f"{base}/api/auth/callback/google"
         user_info = calendar_service.handle_oauth_callback(code, state, redirect_uri=redirect_uri)
-        name = user_info.get("name", "").replace(" ", "%20")
+        # Fully URL-encode: names/emails may contain &, +, # or non-ASCII characters,
+        # which would otherwise corrupt the query string and break login.
+        name = urllib.parse.quote(user_info.get("name", ""))
+        email = urllib.parse.quote(user_info.get("email", ""))
         return RedirectResponse(
-            url=f"{base}/dashboard?session_id={state}&user={user_info['email']}&name={name}",
+            url=f"{base}/dashboard?session_id={state}&user={email}&name={name}",
             status_code=302,
         )
     except Exception as e:
@@ -153,22 +157,6 @@ async def demo_start():
         "email": demo_data.DEMO_EMAIL,
         "name": demo_data.DEMO_NAME,
         "demo": True,
-    }
-
-
-@app.get("/api/debug/session/{session_id}")
-async def debug_session(session_id: str):
-    session = database.get_session(session_id)
-    if not session:
-        return {"error": "session not found", "session_id": session_id}
-    return {
-        "session_id":        session_id,
-        "user_id":           session.get("user_id"),
-        "has_access_token":  bool(session.get("access_token")),
-        "has_refresh_token": bool(session.get("refresh_token")),
-        "token_expiry":      session.get("token_expiry"),
-        "created_at":        session.get("created_at"),
-        "updated_at":        session.get("updated_at"),
     }
 
 

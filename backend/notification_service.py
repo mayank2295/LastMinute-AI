@@ -55,7 +55,11 @@ def run_reminder_check() -> dict:
 
         for r in pending:
             try:
-                dl_str = r["deadline"]
+                # .get() everywhere: a legacy doc missing one field must be
+                # skipped gracefully, not raise and stall on every future run.
+                dl_str = r.get("deadline", "")
+                if not dl_str:
+                    continue
                 dl = datetime.fromisoformat(dl_str.replace("Z", "+00:00"))
                 if not dl.tzinfo:
                     dl = dl.replace(tzinfo=timezone.utc)
@@ -65,12 +69,12 @@ def run_reminder_check() -> dict:
                 if not sub_str:
                     continue
                 sub = json.loads(sub_str)
-                task = r["task_title"]
-                doc_id = r["id"]  # Firestore document ID
+                task = r.get("task_title", "Your task")
+                doc_id = r["id"]  # Firestore document ID (always set by the query)
 
                 sid = r.get("session_id", "")
 
-                if not r["reminder_24h_sent"] and 22 <= hours <= 26:
+                if not r.get("reminder_24h_sent") and 22 <= hours <= 26:
                     send_push(sub, f"⏰ 24h Reminder: {task}",
                               f"Deadline tomorrow at {dl.strftime('%I:%M %p')} UTC",
                               {"type": "24h", "deadline": dl_str})
@@ -79,7 +83,7 @@ def run_reminder_check() -> dict:
                         database.log_activity(sid, f"Sent 24-hour reminder for \"{task}\"", icon="bell")
                     sent["24h"] += 1
 
-                elif not r["reminder_2h_sent"] and 1.5 <= hours <= 2.5:
+                elif not r.get("reminder_2h_sent") and 1.5 <= hours <= 2.5:
                     send_push(sub, f"🚨 2h Warning: {task}",
                               "Due in 2 hours — time to wrap up!",
                               {"type": "2h", "deadline": dl_str})
@@ -97,7 +101,7 @@ def run_reminder_check() -> dict:
                         database.log_activity(sid, f"Sent 1-hour alert for \"{task}\"", icon="bell")
                     sent["1h"] += 1
 
-                elif not r["reminder_30m_sent"] and 0.25 <= hours <= 0.75:
+                elif not r.get("reminder_30m_sent") and 0.25 <= hours <= 0.75:
                     send_push(sub, f"🔴 FINAL WARNING: {task}",
                               "30 minutes left — submit NOW!",
                               {"type": "30m", "deadline": dl_str})

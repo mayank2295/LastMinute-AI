@@ -1,8 +1,8 @@
 # LastMinute AI — Your Deadline Co-Pilot
 
 [![CI](https://github.com/mayank2295/LastMinute-AI/actions/workflows/ci.yml/badge.svg)](https://github.com/mayank2295/LastMinute-AI/actions/workflows/ci.yml)
-[![License: MIT](https://img.shields.io/badge/License-MIT-16a34a.svg)](LICENSE)
-[![Live](https://img.shields.io/badge/Live-mayank.store-16a34a)](https://mayank.store)
+[![License: MIT](https://img.shields.io/badge/License-MIT-2563eb.svg)](LICENSE)
+[![Live](https://img.shields.io/badge/Live-mayank.store-2563eb)](https://mayank.store)
 [![AI: Google Gemini 2.0 Flash](https://img.shields.io/badge/AI-Google%20Gemini%202.0%20Flash-4285F4)](https://ai.google.dev)
 
 > An autonomous, AI-powered productivity agent that connects to your Google
@@ -33,14 +33,14 @@ Built for the **BlockseBlock National Hackathon 2026** — PS1: The Last-Minute 
 - **Agentic AI chat** — Google Gemini with function calling (5 real tools: create events, prioritise tasks, find free slots, set reminders, fetch deadlines)
 - **Brain Dump** — paste a chaotic paragraph; Gemini extracts, dates, estimates, and prioritises every task
 - **Gemini Vision (Scan)** — upload a photo of a syllabus/timetable; deadlines become tasks
-- **Smart Game Plan** — a ranked, time-bucketed action queue that tells you exactly what to do next
-- **Goals & Habits** — set a goal and Gemini breaks it into milestones; build daily habits with streak tracking
+- **Smart Game Plan** — a ranked, time-bucketed action queue (Eisenhower priority matrix) that tells you exactly what to do next
+- **Goals & Habits** — set a goal and Gemini breaks it into milestones; build daily habits with a GitHub-style streak calendar
 - **Live Google Calendar sync** with countdowns and urgency colours
-- **Escalating push reminders** at 24h / 2h / 1h / 30 min before each deadline (Cloud Scheduler-driven)
+- **Escalating alerts** at 24h / 2h / 1h / 30 min before each deadline — browser push (Cloud Scheduler-driven) plus Google Calendar email reminders
 - **Mission Control status bar** that pulses red within 2 hours of a deadline
 - **Focus Timer** (Pomodoro / Deep Work / Sprint) with sessions saved to Firestore
 - **Productivity score** from completion rate, focus sessions, and calendar load
-- **Settings & User Guide** pages, guided tour, **dark / light mode**, and **Demo Mode** (no login)
+- **Settings & User Guide** pages, guided tour, resizable + collapsible sidebar, **dark / light mode**, and **Demo Mode** (no login)
 
 ---
 
@@ -61,27 +61,39 @@ autonomous actions. Full walkthrough in **[docs/TECH_GUIDE.md](docs/TECH_GUIDE.m
 | Layer | Technology |
 |-------|-----------|
 | AI Engine | **Google Gemini 2.0 Flash** (function calling + vision) |
-| Calendar | Google Calendar API v3 (`calendar.events` scope) |
+| Calendar | Google Calendar API v3 (least-privilege `calendar.events` scope) |
 | Auth | Google OAuth 2.0 |
 | Database | Google Firebase Firestore |
 | Scheduling | Google Cloud Scheduler |
 | Secrets | Google Secret Manager |
 | Backend | Python 3.11 · FastAPI · Uvicorn |
-| Frontend | React 18 · Vite · Tailwind CSS · Framer Motion |
-| Deployment | Google Cloud Run (containerised) · Cloudflare (custom domain) |
+| Frontend | React 18 · Vite · Tailwind CSS · Framer Motion · TanStack Query |
+| Deployment | Google Cloud Run (containerised, `asia-south1`) · Cloudflare Worker (custom domain) |
 | Notifications | Web Push API + VAPID |
 
 ---
 
 ## Google Technologies Used
 
-- **Google Gemini 2.0 Flash** — the core AI engine: agentic chat (function calling), the autonomous daily planner, the brain-dump extractor, and the Vision document scanner.
+- **Google Gemini 2.0 Flash** — the core AI engine: agentic chat (function calling), the autonomous daily planner, the brain-dump extractor, the goal-milestone generator, and the Vision document scanner.
 - **Google Calendar API** — two-way integration: reads events and creates events/focus blocks. Uses the **least-privilege `calendar.events` scope** (no access to other calendars, settings, or sharing).
 - **Google Cloud Run** — serverless container hosting the live production app.
-- **Google Cloud Scheduler** — drives autonomous behaviour (reminder checks and planning).
-- **Firebase Firestore** — persistent store for sessions, tasks, conversations, reminders, focus sessions.
+- **Google Cloud Scheduler** — drives autonomous behaviour (reminder checks and planning), authenticated with a fail-closed `X-Cron-Secret` header.
+- **Firebase Firestore** — persistent store for sessions, tasks, conversations, reminders, goals, habits, focus sessions.
 - **Google Secret Manager** — secure storage of the Firebase service-account key.
 - **Google OAuth 2.0** — secure sign-in and scoped Calendar access; no passwords stored.
+
+---
+
+## Running in Production
+
+Live on **Google Cloud Run** (region `asia-south1`, scale-to-zero, revision-based
+deploys via Cloud Build), with the custom domain **mayank.store** served through a
+free **Cloudflare Worker** reverse proxy.
+
+| Cloud Run — request metrics (last week) | Cloud Run — deployed source |
+|:---:|:---:|
+| ![Cloud Run observability metrics](docs/screenshots/cloud-run-metrics.png) | ![Cloud Run deployed source view](docs/screenshots/cloud-run-source.png) |
 
 ---
 
@@ -99,7 +111,7 @@ cd backend
 python -m venv venv
 venv\Scripts\activate
 pip install -r requirements.txt
-cp .env.example .env   # add GEMINI_API_KEY, GOOGLE_CLIENT_ID/SECRET, Firebase + VAPID keys
+cp .env.example .env   # fill in the variables below
 uvicorn main:app --reload --port 8000
 ```
 
@@ -107,13 +119,29 @@ uvicorn main:app --reload --port 8000
 ```bash
 cd frontend
 npm install
-npm run dev   # http://localhost:5173
+npm run dev   # http://localhost:5173 (proxies /api to :8000)
 ```
 
 ### Tests
 ```bash
 cd backend && python -m pytest tests/ -q
 ```
+
+### Environment Variables
+
+All secrets live in `backend/.env` (never committed — see `.gitignore`); in
+production they are injected as Cloud Run env vars / **Secret Manager** secrets.
+
+| Variable | Purpose |
+|----------|---------|
+| `GEMINI_API_KEY` | Google Gemini — the AI engine |
+| `ANTHROPIC_API_KEY` | Optional fallback AI engine |
+| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | Google OAuth 2.0 client |
+| `GOOGLE_REDIRECT_URI` | OAuth callback (dev default: `http://localhost:8000/api/auth/callback/google`) |
+| `FIREBASE_PROJECT_ID` / `FIREBASE_CLIENT_EMAIL` / `FIREBASE_PRIVATE_KEY` | Firestore service account |
+| `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` / `VAPID_CLAIMS_EMAIL` | Web Push notifications |
+| `CRON_SECRET` | Shared secret for Cloud Scheduler endpoints (fail-closed) |
+| `FRONTEND_URL` | Public app URL used for OAuth fallback |
 
 ### OAuth Setup
 1. Google Cloud Console → APIs & Services → Credentials → OAuth 2.0 Client ID (Web)
@@ -125,10 +153,11 @@ cd backend && python -m pytest tests/ -q
 ## Deployment
 
 One command: `.\deploy.ps1` (builds the frontend, bundles it into the backend, and
-deploys via Cloud Build — reads `backend/.env`, no secrets hardcoded). The custom
-domain (`mayank.store`) is served through a free **Cloudflare Worker** reverse proxy
-(`infra/cloudflare-worker.js`). Full architecture and deployment walkthrough in
-**[docs/TECH_GUIDE.md](docs/TECH_GUIDE.md)**.
+deploys via Cloud Build to **Cloud Run `asia-south1`** — reads `backend/.env`, no
+secrets hardcoded). The custom domain (`mayank.store`) is served through a free
+**Cloudflare Worker** reverse proxy (`infra/cloudflare-worker.js`), since Cloud Run
+domain mapping isn't available in `asia-south1`. Full architecture and deployment
+walkthrough in **[docs/TECH_GUIDE.md](docs/TECH_GUIDE.md)**.
 
 ---
 
