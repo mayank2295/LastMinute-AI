@@ -58,12 +58,12 @@ _DEMO_TASKS = [
 ]
 
 
-def seed_demo_tasks():
+def seed_demo_tasks(session_id: str = DEMO_SESSION_ID):
     """Seed demo tasks into Firestore (idempotent-ish — clears old demo tasks first)."""
     import task_engine
     # Clear previous demo tasks
-    for t in database.get_tasks(DEMO_SESSION_ID):
-        database.delete_task(t["id"], DEMO_SESSION_ID)
+    for t in database.get_tasks(session_id):
+        database.delete_task(t["id"], session_id)
 
     now = datetime.now(timezone.utc)
     raw = []
@@ -77,7 +77,7 @@ def seed_demo_tasks():
     prioritized = task_engine.prioritize_tasks(raw)
     for t in prioritized:
         t["source"] = "ai"
-        database.save_task(DEMO_SESSION_ID, t)
+        database.save_task(session_id, t)
     return prioritized
 
 
@@ -95,16 +95,16 @@ _DEMO_HABITS = [
 ]
 
 
-def seed_demo_goals_habits():
+def seed_demo_goals_habits(session_id: str = DEMO_SESSION_ID):
     """Seed demo goals (with AI-style milestones) and habits (with streaks)."""
-    for g in database.get_goals(DEMO_SESSION_ID):
-        database.delete_goal(g["id"], DEMO_SESSION_ID)
-    for h in database.get_habits(DEMO_SESSION_ID):
-        database.delete_habit(h["id"], DEMO_SESSION_ID)
+    for g in database.get_goals(session_id):
+        database.delete_goal(g["id"], session_id)
+    for h in database.get_habits(session_id):
+        database.delete_habit(h["id"], session_id)
 
     now = datetime.now(timezone.utc)
     for spec in _DEMO_GOALS:
-        database.save_goal(DEMO_SESSION_ID, {
+        database.save_goal(session_id, {
             "title": spec["title"],
             "target_date": (now + timedelta(days=spec["days"])).date().isoformat(),
             "motivation": spec["motivation"],
@@ -123,7 +123,7 @@ def seed_demo_goals_habits():
         for i in range(streak + 2, span):
             if i % 3 != 0:
                 dates.append((today - timedelta(days=i)).isoformat())
-        database.save_habit(DEMO_SESSION_ID, {
+        database.save_habit(session_id, {
             "title": spec["title"],
             "current_streak": streak,
             "longest_streak": max(streak, 9),
@@ -131,4 +131,32 @@ def seed_demo_goals_habits():
             "last_checkin": yesterday,
             "checkin_dates": dates,
             "created_at": (now - timedelta(days=span)).isoformat(),
+        })
+
+
+# (days_ago, minutes, task) — a realistic week of deep work so the
+# Productivity page's focus-trend chart has real data in demo mode.
+_DEMO_FOCUS = [
+    (6, 50, "Finish slides for client demo"),
+    (5, 25, "Reply to investor email"),
+    (5, 45, "Fix login bug"),
+    (4, 90, "Finish slides for client demo"),
+    (3, 25, "Write weekly status report"),
+    (2, 50, "Fix login bug"),
+    (1, 60, "Finish slides for client demo"),
+    (0, 25, "Reply to investor email"),
+]
+
+
+def seed_demo_focus_sessions(session_id: str = DEMO_SESSION_ID):
+    """Seed a week of completed focus sessions (fresh demo sessions only)."""
+    if database.get_focus_sessions(session_id):
+        return  # already seeded — never duplicate
+    now = datetime.now(timezone.utc)
+    for days_ago, minutes, task in _DEMO_FOCUS:
+        done_at = now - timedelta(days=days_ago, hours=2)
+        database.save_focus_session(session_id, {
+            "task_title": task,
+            "duration_minutes": minutes,
+            "completed_at": done_at.isoformat(),
         })

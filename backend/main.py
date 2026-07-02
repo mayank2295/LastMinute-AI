@@ -149,11 +149,15 @@ async def get_me(session_id: str = Query(...)):
 
 @app.post("/api/demo/start")
 async def demo_start():
-    """Seed a demo session and return its credentials. No Google login needed."""
-    demo_data.seed_demo_tasks()
-    demo_data.seed_demo_goals_habits()
+    """Seed a FRESH, isolated demo session. Each visitor gets their own session
+    so concurrent demo users (e.g. judges) never clobber each other's progress —
+    a shared fixed ID meant every demo start wiped everyone's completed tasks."""
+    session_id = f"demo-{uuid.uuid4().hex[:12]}"
+    demo_data.seed_demo_tasks(session_id)
+    demo_data.seed_demo_goals_habits(session_id)
+    demo_data.seed_demo_focus_sessions(session_id)
     return {
-        "session_id": demo_data.DEMO_SESSION_ID,
+        "session_id": session_id,
         "email": demo_data.DEMO_EMAIL,
         "name": demo_data.DEMO_NAME,
         "demo": True,
